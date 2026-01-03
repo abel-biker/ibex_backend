@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+pandas
+numpy
+scikit-learn
+matplotlib
+yfinance
+joblib
+xgboost
+tensorflow
+keras
+torch
+seaborn
+requests
+python-multipart

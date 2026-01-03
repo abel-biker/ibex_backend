@@ -1,0 +1,88 @@
+Ibex_backend/
+└── app/
+    ├── main.py
+    ├── api/routes.py
+    ├── services/ia_engine.py
+    ├── services/paper_trading.py
+
+
+requirements.txt
+
+backend/
+├── app/
+│   ├── main.py
+│   ├── api/
+│   │   ├── routes.py
+│   ├── core/
+│   │   ├── config.py
+│   ├── models/
+│   │   ├── signal.py
+│   ├── services/
+│   │   ├── ia_engine.py
+│   │   ├── paper_trading.py
+│   └── db/
+│       └── memory.py
+└── requirements.txt
+
+main from fastapi import FastAPI
+from app.api.routes import router
+
+app = FastAPI(title="IBEX35 IA Backend")
+
+app.include_router(router)
+
+@app.get("/")
+def health():
+    return {"status": "ok"}
+
+include_router
+from fastapi import APIRouter
+from app.services.ia_engine import generate_signal
+from app.services.paper_trading import simulate_trade
+
+router = APIRouter(prefix="/api")
+
+@router.get("/signal/{symbol}")
+def get_signal(symbol: str):
+    signal = generate_signal(symbol)
+    return signal
+
+@router.post("/paper-trade/{symbol}")
+def paper_trade(symbol: str):
+    result = simulate_trade(symbol)
+    return result
+
+models/signal.py
+from pydantic import BaseModel
+
+class Signal(BaseModel):
+    symbol: str
+    action: str   # BUY / SELL / HOLD
+    confidence: float
+    price: float
+
+ia_engine.py
+import random
+
+def generate_signal(symbol: str):
+    action = random.choice(["BUY", "SELL", "HOLD"])
+    confidence = round(random.uniform(0.55, 0.75), 2)
+
+    return {
+        "symbol": symbol,
+        "action": action,
+        "confidence": confidence,
+        "price": round(random.uniform(8000, 11000), 2)
+    }
+
+paper_trading.py
+def simulate_trade(symbol: str):
+    return {
+        "symbol": symbol,
+        "status": "SIMULATED",
+        "pnl": round(100 * (0.5), 2),
+        "sl": -1.5,
+        "tp": 3.0
+    }
+
+    
