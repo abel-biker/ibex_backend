@@ -343,8 +343,8 @@ def get_stock_score(symbol: str):
     
     ⚡ Usa caché de 5 minutos.
     """
-    if symbol not in IBEX_35_SYMBOLS:
-        raise HTTPException(status_code=404, detail=f"Symbol {symbol} not in IBEX 35")
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
+        # raise HTTPException(status_code=404, detail=f"Symbol {symbol} not in IBEX 35")
     
     try:
         # Usar datos cacheados
@@ -402,8 +402,8 @@ def get_ea_signals(
     - bollinger: Bandas de Bollinger
     - ensemble: Combinación de todas (recomendado)
     """
-    if symbol not in IBEX_35_SYMBOLS:
-        raise HTTPException(status_code=404, detail=f"Symbol {symbol} not in IBEX 35")
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
+        # raise HTTPException(status_code=404, detail=f"Symbol {symbol} not in IBEX 35")
     
     try:
         # Obtener datos
@@ -482,8 +482,8 @@ def run_backtest(
     📱 MÓVIL: Backtest de estrategia EA.
     Retorna métricas de performance histórica.
     """
-    if symbol not in IBEX_35_SYMBOLS:
-        raise HTTPException(status_code=404, detail=f"Symbol {symbol} not in IBEX 35")
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
+        # raise HTTPException(status_code=404, detail=f"Symbol {symbol} not in IBEX 35")
     
     try:
         # Obtener datos históricos (máximo disponible)
@@ -613,7 +613,7 @@ def daily(symbol: str):
     - Yahoo Finance como proveedor principal
     - Twelve Data como respaldo
     """
-    if symbol not in IBEX_35_SYMBOLS:
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
         raise HTTPException(
             status_code=404, 
             detail=f"Símbolo '{symbol}' no encontrado en IBEX 35. Usa símbolos como SAN.MC, BBVA.MC, etc. Ver / para lista completa."
@@ -639,7 +639,7 @@ def daily_signals(
     Devuelve OHLCV con indicadores técnicos y recomendaciones (ensemble).
     Parámetros: limit (default 30), order (asc|desc, default desc)
     """
-    if symbol not in IBEX_35_SYMBOLS:
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
         raise HTTPException(
             status_code=404,
             detail=f"Símbolo '{symbol}' no encontrado en IBEX 35. Usa símbolos como SAN.MC, BBVA.MC, etc. Ver / para lista completa."
@@ -670,7 +670,7 @@ def dashboard(
     - 5d: Últimos 5 días con datos diarios
     """
     # Validar símbolo
-    if symbol not in IBEX_35_SYMBOLS:
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
         available_symbols = ', '.join(sorted(list(IBEX_35_SYMBOLS.keys())[:10]))
         error_html = f"""
         <!DOCTYPE html>
@@ -794,7 +794,7 @@ def get_stock_data_timeframe(
     - 1d: Datos diarios (últimos 6 meses por defecto)
     - 5d: Datos diarios (últimos 5 días)
     """
-    if symbol not in IBEX_35_SYMBOLS:
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
         raise HTTPException(status_code=404, detail=f"Símbolo '{symbol}' no encontrado")
     
     try:
@@ -838,7 +838,7 @@ def add_to_favorites(
     """
     ⭐ Añade un símbolo a favoritos.
     """
-    if symbol not in IBEX_35_SYMBOLS:
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
         raise HTTPException(status_code=404, detail=f"Símbolo '{symbol}' no encontrado")
     
     result = add_favorite(symbol, user_id)
@@ -913,7 +913,7 @@ def create_price_alert(
     - email: Solo email
     - both: Ambos
     """
-    if symbol not in IBEX_35_SYMBOLS:
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
         raise HTTPException(status_code=404, detail=f"Símbolo '{symbol}' no encontrado")
     
     try:
@@ -994,7 +994,7 @@ def manual_check_alerts(symbol: str):
     🔍 Verifica manualmente alertas para un símbolo (útil para testing).
     En producción, esto debería ejecutarse automáticamente cada X minutos.
     """
-    if symbol not in IBEX_35_SYMBOLS:
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
         raise HTTPException(status_code=404, detail=f"Símbolo '{symbol}' no encontrado")
     
     try:
