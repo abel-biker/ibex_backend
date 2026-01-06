@@ -164,7 +164,7 @@ interface IBEX35ApiService {
 object IBEX35ApiClient {
     
     // Cambiar por tu URL de producción
-    private const val BASE_URL = "http://localhost:8000/"
+    private const val BASE_URL = "https://web-production-4c740.up.railway.app"
     
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY

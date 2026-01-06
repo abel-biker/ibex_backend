@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Timeframes y Confianza</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 20px auto; padding: 20px; }
+        .test-section { background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .result { background: white; padding: 15px; margin: 10px 0; border-left: 4px solid #667eea; }
+        button { padding: 10px 20px; margin: 5px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #5568d3; }
+        pre { background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        .confidence { font-size: 1.5em; font-weight: bold; color: #10b981; }
+        .error { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test de Nuevas Funcionalidades</h1>
+    
+    <div class="test-section">
+        <h2>1. Test de Confianza Dinámica</h2>
+        <button onclick="testConfidence()">Probar Santander (SAN.MC)</button>
+        <button onclick="testConfidence('BBVA.MC')">Probar BBVA</button>
+        <div id="confidence-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Test de Timeframes</h2>
+        <button onclick="testTimeframe('1h')">1 Hora (7 días)</button>
+        <button onclick="testTimeframe('1d')">1 Día (6 meses)</button>
+        <button onclick="testTimeframe('5d')">5 Días</button>
+        <div id="timeframe-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Test de Favoritos</h2>
+        <button onclick="addFavorite()">Añadir SAN.MC</button>
+        <button onclick="listFavorites()">Listar Favoritos</button>
+        <button onclick="removeFavorite()">Eliminar SAN.MC</button>
+        <div id="favorites-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Test de Alertas</h2>
+        <button onclick="createAlert()">Crear Alerta (SAN.MC > 10.50)</button>
+        <button onclick="listAlerts()">Listar Alertas</button>
+        <button onclick="checkAlerts()">Verificar Alertas</button>
+        <div id="alerts-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>5. Limpiar Caché</h2>
+        <button onclick="clearCache()">Limpiar Caché</button>
+        <button onclick="cacheStats()">Ver Stats Caché</button>
+        <div id="cache-result" class="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        
+        async function testConfidence(symbol = 'SAN.MC') {
+            const result = document.getElementById('confidence-result');
+            result.innerHTML = '⏳ Cargando...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/stock/${symbol}/score`);
+                const data = await response.json();
+                
+                result.innerHTML = `
+                    <h3>${data.name} (${data.symbol})</h3>
+                    <p class="confidence">Confianza: ${data.confidence}</p>
+                    <p>Score: ${data.score}/10 - ${data.rating}</p>
+                    <p>Precio: €${data.price}</p>
+                    <h4>Sub-scores:</h4>
+                    <ul>
+                        <li>Técnico: ${data.sub_scores.technical}</li>
+                        <li>Momentum: ${data.sub_scores.momentum}</li>
+                        <li>Sentiment: ${data.sub_scores.sentiment}</li>
+                    </ul>
+                    <h4>JSON completo:</h4>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                result.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function testTimeframe(timeframe) {
+            const result = document.getElementById('timeframe-result');
+            result.innerHTML = '⏳ Cargando...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/stock/SAN.MC/data?timeframe=${timeframe}`);
+                const data = await response.json();
+                
+                result.innerHTML = `
+                    <h3>${data.name} - Timeframe: ${data.timeframe}</h3>
+                    <p>Puntos de datos: ${data.data_points}</p>
+                    <p>Primer dato: ${data.data[0].fecha}</p>
+                    <p>Último dato: ${data.data[data.data.length - 1].fecha}</p>
+                    <h4>Primeros 3 registros:</h4>
+                    <pre>${JSON.stringify(data.data.slice(0, 3), null, 2)}</pre>
+                `;
+            } catch (error) {
+                result.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function addFavorite() {
+            const result = document.getElementById('favorites-result');
+            result.innerHTML = '⏳ Añadiendo...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/favorites/SAN.MC`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                result.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                result.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function listFavorites() {
+            const result = document.getElementById('favorites-result');
+            result.innerHTML = '⏳ Cargando...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/favorites`);
+                const data = await response.json();
+                result.innerHTML = `
+                    <h3>Total: ${data.total} favoritos</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                result.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function removeFavorite() {
+            const result = document.getElementById('favorites-result');
+            result.innerHTML = '⏳ Eliminando...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/favorites/SAN.MC`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                result.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                result.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function createAlert() {
+            const result = document.getElementById('alerts-result');
+            result.innerHTML = '⏳ Creando alerta...';
+            
+            try {
+                const response = await fetch(
+                    `${API_BASE}/api/v1/alerts?symbol=SAN.MC&condition=above&target_price=10.50&notification_type=popup`,
+                    { method: 'POST' }
+                );
+                const data = await response.json();
+                result.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                result.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function listAlerts() {
+            const result = document.getElementById('alerts-result');
+            result.innerHTML = '⏳ Cargando alertas...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/alerts`);
+                const data = await response.json();
+                result.innerHTML = `
+                    <h3>Total: ${data.total} alertas</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                result.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function checkAlerts() {
+            const result = document.getElementById('alerts-result');
+            result.innerHTML = '⏳ Verificando alertas...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/alerts/check/SAN.MC`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                result.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                result.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function clearCache() {
+            const result = document.getElementById('cache-result');
+            result.innerHTML = '⏳ Limpiando...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/admin/cache/clear`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                result.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                result.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function cacheStats() {
+            const result = document.getElementById('cache-result');
+            result.innerHTML = '⏳ Cargando...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/admin/cache/stats`);
+                const data = await response.json();
+                result.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                result.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+        
+        // Cargar test inicial
+        window.onload = () => {
+            console.log('Página de test cargada. Servidor debe estar en ' + API_BASE);
+        };
+    </script>
+</body>
+</html>

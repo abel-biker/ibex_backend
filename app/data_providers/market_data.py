@@ -34,18 +34,37 @@ def normalize_symbol(symbol: str) -> str:
     return s
 
 
-def get_daily_data(symbol: str):
+def get_daily_data(symbol: str, interval: str = "1d", period: str = "5y"):
+    """
+    Obtiene datos de mercado con soporte para múltiples intervalos.
+    
+    Args:
+        symbol: Símbolo del activo
+        interval: "1h" (horario), "1d" (diario), "5d" usa "1d"
+        period: Período de histórico ("1d", "5d", "1mo", "3mo", "1y", "5y")
+    
+    Returns:
+        Lista de diccionarios con datos OHLCV
+    """
     norm_symbol = normalize_symbol(symbol)
+    
+    # Mapeo de timeframes para usuarios a Yahoo Finance
+    if interval == "5d":
+        interval = "1d"
+        period = "5d"
+    
     try:
-        data = get_daily_data_yahoo(norm_symbol)
+        data = get_daily_data_yahoo(norm_symbol, interval=interval, period=period)
         if data:
             return data
     except Exception as e:
-        print("Yahoo Finance falló:", e)
+        print(f"Yahoo Finance falló para {norm_symbol} ({interval}/{period}):", e)
 
-    # Fallback a TwelveData
-    try:
-        return get_daily_data_twelvedata(norm_symbol)
-    except Exception as e:
-        print("TwelveData falló:", e)
-        return []
+    # Fallback a TwelveData (solo para datos diarios)
+    if interval == "1d":
+        try:
+            return get_daily_data_twelvedata(norm_symbol)
+        except Exception as e:
+            print("TwelveData falló:", e)
+    
+    return None

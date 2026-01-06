@@ -307,13 +307,70 @@ class DanelfinScorer:
             return 'STRONG SELL'
     
     def _get_confidence(self, data: pd.DataFrame) -> str:
-        """Evalúa la confianza del análisis basado en cantidad de datos"""
-        if len(data) >= 252:
-            return 'HIGH'
-        elif len(data) >= 60:
-            return 'MEDIUM'
+        """
+        Evalúa la confianza del análisis basado en múltiples factores.
+        Ahora considera:
+        - Cantidad de datos históricos
+        - Calidad de indicadores (NaN vs valores válidos)
+        - Consistencia de señales entre indicadores
+        - Volatilidad reciente
+        """
+        confidence_score = 0
+        max_score = 100
+        
+        # 1. Cantidad de datos (40 puntos)
+        data_length = len(data)
+        if data_length >= 252:
+            confidence_score += 40
+        elif data_length >= 120:
+            confidence_score += 30
+        elif data_length >= 60:
+            confidence_score += 20
         else:
-            return 'LOW'
+            confidence_score += 10
+        
+        # 2. Calidad de indicadores (30 puntos)
+        latest = data.iloc[-1]
+        required_indicators = ['rsi', 'macd', 'macd_signal', 'sma_20', 'sma_50']
+        valid_indicators = sum(1 for ind in required_indicators 
+                              if ind in data.columns and pd.notna(latest.get(ind)))
+        confidence_score += (valid_indicators / len(required_indicators)) * 30
+        
+        # 3. Volatilidad (15 puntos) - menos volatilidad = más confianza
+        if len(data) >= 20:
+            returns = data['close'].pct_change().iloc[-20:]
+            volatility = returns.std() * 100
+            if volatility < 1.5:
+                confidence_score += 15
+            elif volatility < 2.5:
+                confidence_score += 10
+            elif volatility < 4:
+                confidence_score += 5
+            # volatilidad muy alta = 0 puntos
+        
+        # 4. Volumen consistente (15 puntos)
+        if 'volume' in data.columns and len(data) >= 10:
+            recent_volumes = data['volume'].iloc[-10:]
+            if recent_volumes.mean() > 0:
+                volume_cv = recent_volumes.std() / recent_volumes.mean()  # Coeficiente de variación
+                if volume_cv < 0.5:
+                    confidence_score += 15  # Volumen estable
+                elif volume_cv < 1:
+                    confidence_score += 10
+                elif volume_cv < 2:
+                    confidence_score += 5
+        
+        # Convertir score a porcentaje y categoría
+        confidence_pct = round((confidence_score / max_score) * 100)
+        
+        if confidence_pct >= 80:
+            return f'HIGH ({confidence_pct}%)'
+        elif confidence_pct >= 60:
+            return f'MEDIUM ({confidence_pct}%)'
+        elif confidence_pct >= 40:
+            return f'LOW ({confidence_pct}%)'
+        else:
+            return f'VERY LOW ({confidence_pct}%)'
     
     def _generate_signals(self, data: pd.DataFrame, score: float) -> list:
         """Genera señales específicas basadas en el análisis"""

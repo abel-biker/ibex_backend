@@ -57,8 +57,8 @@ def _safe_round(x: Optional[float], decimals: int = 2) -> Optional[float]:
     except (TypeError, ValueError):
         return None
 
-def compute_signals(symbol: str, limit: int = 30, order: str = "desc") -> List[Dict]:
-    precios = get_daily_data(symbol)
+def compute_signals(symbol: str, limit: int = 30, order: str = "desc", interval: str = "1d", period: str = "1y") -> List[Dict]:
+    precios = get_daily_data(symbol, interval=interval, period=period)
     if not precios:
         return []
 
@@ -103,7 +103,11 @@ def compute_signals(symbol: str, limit: int = 30, order: str = "desc") -> List[D
     for record in records:
         # Convertir timestamp a string
         if isinstance(record.get("fecha"), pd.Timestamp):
-            fecha_str = record["fecha"].strftime("%Y-%m-%d")
+            # Preservar hora para intervalos intradiarios
+            if interval in ["1m", "5m", "15m", "30m", "1h", "90m"]:
+                fecha_str = record["fecha"].strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                fecha_str = record["fecha"].strftime("%Y-%m-%d")
         else:
             fecha_str = str(record.get("fecha", ""))
         

@@ -57,8 +57,20 @@ def format_signal(signal: Dict) -> Dict:
     recommendation = str(signal.get("recommendation") or "HOLD")
     emoji = emoji_map.get(recommendation, "⚪")
 
-    confidence = _safe_float(signal.get("confidence"), 0.0) or 0.0
-    confidence_pct = int(max(0, min(1, confidence)) * 100)
+    # Manejar confianza: puede ser string "HIGH (95%)" o float 0.0-1.0
+    confidence_raw = signal.get("confidence", 0.0)
+    if isinstance(confidence_raw, str):
+        # Ya viene formateada (e.g., "HIGH (95%)"), mantenerla
+        confidence = confidence_raw
+        # Extraer el porcentaje si está presente
+        import re
+        match = re.search(r'\((\d+)%\)', confidence_raw)
+        confidence_pct = int(match.group(1)) if match else 0
+    else:
+        # Es un número (0.0-1.0), convertir a porcentaje
+        confidence = _safe_float(confidence_raw, 0.0) or 0.0
+        confidence_pct = int(max(0, min(1, confidence)) * 100)
+    
     bar_filled = "█" * (confidence_pct // 10)
     bar_empty = "░" * (10 - (confidence_pct // 10))
     confidence_bar = f"[{bar_filled}{bar_empty}] {confidence_pct}%"
@@ -82,10 +94,16 @@ def format_signal(signal: Dict) -> Dict:
     safe["formatted_recommendation"] = f"{emoji} {recommendation}"
     return safe
 
-def generate_html_dashboard(symbol: str, signals: List[Dict]) -> str:
-    """Genera dashboard HTML moderno con tablas, múltiples gráficos y diseño profesional."""
+def generate_html_dashboard(symbol: str, signals: List[Dict], timeframe: str = "1d") -> str:
+    """Genera dashboard HTML moderno con nombre de empresa prominente y selector de timeframe."""
     if not signals:
         return "<h1>No hay datos disponibles</h1>"
+
+    # Obtener nombre de la empresa
+    from app.data_providers.ibex35_symbols import get_company_info
+    company_info = get_company_info(symbol)
+    company_name = company_info["name"] if company_info else symbol
+    company_sector = company_info["sector"] if company_info else "N/A"
 
     try:
         signals_sorted = sorted(signals, key=lambda s: (s.get("fecha") or ""))
@@ -95,7 +113,43 @@ def generate_html_dashboard(symbol: str, signals: List[Dict]) -> str:
     normalized = [format_signal(s) for s in signals_sorted]
 
     # Extraer datos para gráficos
-    fechas = [str(s.get("fecha") or "") for s in normalized]
+    # Formatear fechas según el timeframe
+    from datetime import datetime
+    fechas_formatted = []
+    
+    # DEBUG: Ver formato de fechas que llegan
+    if normalized:
+        print(f"🔍 DEBUG - Primer fecha raw: '{normalized[0].get('fecha')}'")
+        print(f"🔍 DEBUG - Timeframe seleccionado: '{timeframe}'")
+    
+    for s in normalized:
+        fecha_raw = str(s.get("fecha") or "")
+        try:
+            if timeframe == "1h":
+                # Para 1h (datos cada 5min): mostrar HH:MM
+                if ' ' in fecha_raw:
+                    dt = datetime.strptime(fecha_raw, "%Y-%m-%d %H:%M:%S")
+                    fechas_formatted.append(dt.strftime("%H:%M"))
+                else:
+                    dt = datetime.strptime(fecha_raw, "%Y-%m-%d")
+                    fechas_formatted.append(dt.strftime("%d/%m"))
+            elif timeframe == "1d":
+                # Para 1d (datos cada 1h): mostrar DD/MM HH:MM
+                if ' ' in fecha_raw:
+                    dt = datetime.strptime(fecha_raw, "%Y-%m-%d %H:%M:%S")
+                    fechas_formatted.append(dt.strftime("%d/%m %H:%M"))
+                else:
+                    dt = datetime.strptime(fecha_raw, "%Y-%m-%d")
+                    fechas_formatted.append(dt.strftime("%d/%m"))
+            else:
+                # Para 5d (datos diarios): mostrar DD/MM/YYYY
+                dt = datetime.strptime(fecha_raw.split(' ')[0], "%Y-%m-%d")
+                fechas_formatted.append(dt.strftime("%d/%m/%Y"))
+        except Exception as e:
+            print(f"⚠️ Error formateando fecha '{fecha_raw}': {e}")
+            fechas_formatted.append(fecha_raw)
+    
+    fechas = fechas_formatted
     closes = [_safe_float(s.get("close")) for s in normalized]
     opens = [_safe_float(s.get("open")) for s in normalized]
     highs = [_safe_float(s.get("high")) for s in normalized]
@@ -111,14 +165,29 @@ def generate_html_dashboard(symbol: str, signals: List[Dict]) -> str:
 
     # Datos del último día (el más reciente está al final después de sort)
     latest = normalized[-1]
+    
+    # DEBUG: Ver qué confianza tiene
+    print(f"🔍 DEBUG formatter - latest['confidence']: {latest.get('confidence')}")
+    
     recommendation = str(latest.get("recommendation") or "HOLD")
     emoji_map = {"BUY": "🟢", "SELL": "🔴", "HOLD": "🟡"}
     emoji = emoji_map.get(recommendation, "⚪")
     color_map = {"BUY": "#10b981", "SELL": "#ef4444", "HOLD": "#f59e0b"}
     rec_color = color_map.get(recommendation, "#6b7280")
 
-    confidence = float(latest.get("confidence") or 0.0)
-    confidence_pct = int(max(0, min(1, confidence)) * 100)
+    # Extraer porcentaje de confianza (ahora viene como "HIGH (95%)" o número)
+    confidence_raw = latest.get("confidence", "MEDIUM (50%)")
+    if isinstance(confidence_raw, str):
+        # Extraer número entre paréntesis: "HIGH (95%)" -> 95
+        import re
+        match = re.search(r'\((\d+)%\)', confidence_raw)
+        confidence_pct = int(match.group(1)) if match else 50
+        confidence_label = confidence_raw
+    else:
+        # Formato legacy (número flotante 0-1)
+        confidence_pct = int(max(0, min(1, float(confidence_raw))) * 100)
+        confidence_label = f"{confidence_pct}%"
+    
     latest_close_val = _safe_float(latest.get("close"))
     latest_close = f"€{latest_close_val:.2f}" if latest_close_val is not None else "N/A"
     pct_val = _safe_float(latest.get("pct_change"))
@@ -148,23 +217,61 @@ def generate_html_dashboard(symbol: str, signals: List[Dict]) -> str:
     # Fecha del último dato (el más reciente)
     latest_date_str = str(latest.get("fecha", ""))
     try:
-        # Convertir fecha YYYY-MM-DD a DD/MM/YYYY
+        # Formatear fecha según el timeframe
         from datetime import datetime
-        latest_date_obj = datetime.strptime(latest_date_str, "%Y-%m-%d")
-        current_date = latest_date_obj.strftime("%d/%m/%Y")
-    except:
+        if timeframe == "1h":
+            # Para 1h (cada 5min): mostrar fecha y hora
+            if ' ' in latest_date_str:
+                latest_date_obj = datetime.strptime(latest_date_str, "%Y-%m-%d %H:%M:%S")
+                current_date = latest_date_obj.strftime("%d/%m/%Y %H:%M")
+            else:
+                latest_date_obj = datetime.strptime(latest_date_str, "%Y-%m-%d")
+                current_date = latest_date_obj.strftime("%d/%m/%Y")
+        elif timeframe == "1d":
+            # Para 1d (cada 1h): mostrar fecha y hora
+            if ' ' in latest_date_str:
+                latest_date_obj = datetime.strptime(latest_date_str, "%Y-%m-%d %H:%M:%S")
+                current_date = latest_date_obj.strftime("%d/%m/%Y %H:%M")
+            else:
+                latest_date_obj = datetime.strptime(latest_date_str, "%Y-%m-%d")
+                current_date = latest_date_obj.strftime("%d/%m/%Y")
+        else:
+            # Para 5d (diario): solo fecha
+            latest_date_obj = datetime.strptime(latest_date_str.split(' ')[0], "%Y-%m-%d")
+            current_date = latest_date_obj.strftime("%d/%m/%Y")
+    except Exception as e:
+        print(f"⚠️ Error formateando fecha header '{latest_date_str}': {e}")
         current_date = latest_date_str
 
     # Generar filas de tabla (últimos 10 días, más reciente primero)
     table_rows = ""
     for s in reversed(normalized[-10:]):
         fecha_raw = s.get("fecha", "N/A")
-        # Formatear fecha a DD/MM/YYYY
+        # Formatear fecha según el timeframe
         try:
             from datetime import datetime
-            fecha_obj = datetime.strptime(str(fecha_raw), "%Y-%m-%d")
-            fecha = fecha_obj.strftime("%d/%m/%Y")
-        except:
+            if timeframe == "1h":
+                # Para 1h (cada 5min): mostrar solo hora
+                if ' ' in str(fecha_raw):
+                    fecha_obj = datetime.strptime(str(fecha_raw), "%Y-%m-%d %H:%M:%S")
+                    fecha = fecha_obj.strftime("%H:%M")
+                else:
+                    fecha_obj = datetime.strptime(str(fecha_raw), "%Y-%m-%d")
+                    fecha = fecha_obj.strftime("%d/%m/%Y")
+            elif timeframe == "1d":
+                # Para 1d (cada 1h): mostrar fecha y hora
+                if ' ' in str(fecha_raw):
+                    fecha_obj = datetime.strptime(str(fecha_raw), "%Y-%m-%d %H:%M:%S")
+                    fecha = fecha_obj.strftime("%d/%m %H:%M")
+                else:
+                    fecha_obj = datetime.strptime(str(fecha_raw), "%Y-%m-%d")
+                    fecha = fecha_obj.strftime("%d/%m/%Y")
+            else:
+                # Para 5d (diario): solo fecha
+                fecha_obj = datetime.strptime(str(fecha_raw).split(' ')[0], "%Y-%m-%d")
+                fecha = fecha_obj.strftime("%d/%m/%Y")
+        except Exception as e:
+            print(f"⚠️ Error formateando fecha tabla '{fecha_raw}': {e}")
             fecha = str(fecha_raw)
         
         close_val = _safe_float(s.get("close"))
@@ -647,6 +754,16 @@ def generate_html_dashboard(symbol: str, signals: List[Dict]) -> str:
         <div class="search-bar">
             <input type="text" id="symbolInput" placeholder="Ingresa símbolo (ej: AAPL, MSFT, ^IBEX)" value="{symbol}" />
             <button onclick="searchSymbol()">🔍 Buscar</button>
+            
+            <div class="limit-selector">
+                <label for="timeframeSelect">Vista:</label>
+                <select id="timeframeSelect" onchange="searchSymbol()">
+                    <option value="1h" {'selected' if timeframe == '1h' else ''}>📊 1 Hora</option>
+                    <option value="1d" {'selected' if timeframe == '1d' else ''}>📅 1 Día</option>
+                    <option value="5d" {'selected' if timeframe == '5d' else ''}>📆 Semanal</option>
+                </select>
+            </div>
+            
             <div class="limit-selector">
                 <label for="limitSelect">Período:</label>
                 <select id="limitSelect" onchange="searchSymbol()">
@@ -661,9 +778,57 @@ def generate_html_dashboard(symbol: str, signals: List[Dict]) -> str:
 
         <!-- Header -->
         <header>
-            <h1>📊 {symbol}</h1>
-            <div class="header-subtitle">Última actualización: {current_date}</div>
+            <h1>📊 {company_name}</h1>
+            <div class="header-subtitle" style="font-size: 1.4em; margin-top: 10px; color: #374151;">
+                <strong>{symbol}</strong> · {company_sector}
+            </div>
+            <div class="header-subtitle" style="margin-top: 8px;">Última actualización: {current_date}</div>
+            
+            <!-- Botón de Alertas -->
+            <div style="margin-top: 20px;">
+                <button onclick="toggleAlertForm()" style="padding: 12px 28px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 1em; transition: transform 0.2s;">
+                    ⚠️ Crear Alerta de Precio
+                </button>
+            </div>
         </header>
+        
+        <!-- Formulario de Alertas (oculto por defecto) -->
+        <div id="alertForm" style="display: none; background: rgba(255,255,255,0.98); padding: 30px; border-radius: 20px; margin-bottom: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.2);">
+            <h3 style="margin-bottom: 20px; color: #111827;">⚠️ Configurar Alerta de Precio</h3>
+            <div style="display: grid; gap: 15px;">
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 5px;">Símbolo:</label>
+                    <input type="text" id="alertSymbol" value="{symbol}" readonly style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1em; background: #f9fafb;" />
+                </div>
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 5px;">Precio actual: €{latest_close_val:.2f}</label>
+                </div>
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 5px;">Condición:</label>
+                    <select id="alertCondition" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1em;">
+                        <option value="above">Por encima de (>=)</option>
+                        <option value="below">Por debajo de (<=)</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 5px;">Precio objetivo (€):</label>
+                    <input type="number" id="alertPrice" step="0.01" placeholder="Ej: {latest_close_val:.2f}" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1em;" />
+                </div>
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 5px;">Email para notificación:</label>
+                    <input type="email" id="alertEmail" placeholder="tu@email.com" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1em;" />
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button onclick="createAlert()" style="flex: 1; padding: 14px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 1em;">
+                        ✅ Crear Alerta
+                    </button>
+                    <button onclick="toggleAlertForm()" style="flex: 1; padding: 14px; background: #6b7280; color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 1em;">
+                        ❌ Cancelar
+                    </button>
+                </div>
+            </div>
+            <div id="alertMessage" style="margin-top: 15px; padding: 12px; border-radius: 8px; display: none;"></div>
+        </div>
 
         <!-- Main Signal Card -->
         <div class="main-signal-card">
@@ -674,7 +839,7 @@ def generate_html_dashboard(symbol: str, signals: List[Dict]) -> str:
                 </div>
 
                 <div class="confidence-section">
-                    <div class="confidence-label">Nivel de Confianza</div>
+                    <div class="confidence-label">Nivel de Confianza: {confidence_label}</div>
                     <div class="confidence-bar">
                         <div class="confidence-fill" style="width: {confidence_pct}%;">
                             {confidence_pct}%
@@ -810,11 +975,86 @@ def generate_html_dashboard(symbol: str, signals: List[Dict]) -> str:
         function searchSymbol() {{
             const symbol = document.getElementById('symbolInput').value.toUpperCase().trim();
             const limit = document.getElementById('limitSelect').value;
+            const timeframe = document.getElementById('timeframeSelect').value;
             if (!symbol) {{ 
                 alert('Por favor ingresa un símbolo válido'); 
                 return; 
             }}
-            window.location.href = '/dashboard/' + symbol + '?limit=' + limit;
+            window.location.href = '/dashboard/' + symbol + '?limit=' + limit + '&timeframe=' + timeframe;
+        }}
+        
+        // Funciones para alertas
+        function toggleAlertForm() {{
+            const form = document.getElementById('alertForm');
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            document.getElementById('alertMessage').style.display = 'none';
+        }}
+        
+        async function createAlert() {{
+            const symbol = document.getElementById('alertSymbol').value;
+            const condition = document.getElementById('alertCondition').value;
+            const targetPrice = parseFloat(document.getElementById('alertPrice').value);
+            const email = document.getElementById('alertEmail').value.trim();
+            
+            // Validaciones
+            if (!targetPrice || targetPrice <= 0) {{
+                showAlertMessage('❌ Por favor ingresa un precio válido', 'error');
+                return;
+            }}
+            
+            if (!email || !email.includes('@')) {{
+                showAlertMessage('❌ Por favor ingresa un email válido', 'error');
+                return;
+            }}
+            
+            // Crear alerta
+            try {{
+                // Construir URL con query parameters
+                const params = new URLSearchParams({{
+                    symbol: symbol,
+                    condition: condition,
+                    target_price: targetPrice,
+                    notification_type: 'email',
+                    email: email
+                }});
+                
+                const response = await fetch('/api/v1/alerts?' + params.toString(), {{
+                    method: 'POST'
+                }});
+                
+                const data = await response.json();
+                
+                if (response.ok) {{
+                    showAlertMessage(`✅ Alerta creada! Te notificaremos cuando ${{symbol}} esté ${{condition === 'above' ? 'por encima' : 'por debajo'}} de €${{targetPrice.toFixed(2)}}`, 'success');
+                    // Limpiar formulario
+                    document.getElementById('alertPrice').value = '';
+                    document.getElementById('alertEmail').value = '';
+                }} else {{
+                    // Manejar diferentes tipos de errores
+                    let errorMsg = 'No se pudo crear la alerta';
+                    if (data.detail) {{
+                        if (typeof data.detail === 'string') {{
+                            errorMsg = data.detail;
+                        }} else if (Array.isArray(data.detail)) {{
+                            errorMsg = data.detail.map(err => err.msg || JSON.stringify(err)).join(', ');
+                        }} else {{
+                            errorMsg = JSON.stringify(data.detail);
+                        }}
+                    }}
+                    showAlertMessage('❌ Error: ' + errorMsg, 'error');
+                }}
+            }} catch (error) {{
+                showAlertMessage('❌ Error de conexión: ' + error.message, 'error');
+            }}
+        }}
+        
+        function showAlertMessage(message, type) {{
+            const msgDiv = document.getElementById('alertMessage');
+            msgDiv.textContent = message;
+            msgDiv.style.display = 'block';
+            msgDiv.style.background = type === 'success' ? '#d1fae5' : '#fee2e2';
+            msgDiv.style.color = type === 'success' ? '#065f46' : '#991b1b';
+            msgDiv.style.borderLeft = `4px solid ${{type === 'success' ? '#10b981' : '#ef4444'}}`;
         }}
 
         // Data arrays
