@@ -109,24 +109,26 @@ def check_all_alerts():
 
 
 # Iniciar scheduler en background
-scheduler = BackgroundScheduler()
-scheduler.add_job(
-    func=check_all_alerts,
-    trigger=IntervalTrigger(minutes=5),
-    id='check_alerts_job',
-    name='Verificar alertas de precio cada 5 minutos',
-    replace_existing=True
-)
+# NOTA: Deshabilitado temporalmente para Railway (causaba bloqueos)
+# TODO: Migrar a Railway Cron Jobs o servicio externo
+# scheduler = BackgroundScheduler()
+# scheduler.add_job(
+#     func=check_all_alerts,
+#     trigger=IntervalTrigger(minutes=5),
+#     id='check_alerts_job',
+#     name='Verificar alertas de precio cada 5 minutos',
+#     replace_existing=True
+# )
 
 @app.on_event("startup")
 async def startup_event():
-    scheduler.start()
-    print("✅ Scheduler de alertas iniciado (cada 5 minutos)")
+    # scheduler.start()
+    print("⚠️ Scheduler de alertas DESHABILITADO (configurar Railway Cron Jobs)")
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    scheduler.shutdown()
-    print("🛑 Scheduler detenido")
+    # scheduler.shutdown()
+    print("🛑 Servidor detenido")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -343,7 +345,7 @@ def get_stock_score(symbol: str):
     
     ⚡ Usa caché de 5 minutos.
     """
-    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
         # raise HTTPException(status_code=404, detail=f"Symbol {symbol} not in IBEX 35")
     
     try:
@@ -402,7 +404,7 @@ def get_ea_signals(
     - bollinger: Bandas de Bollinger
     - ensemble: Combinación de todas (recomendado)
     """
-    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
         # raise HTTPException(status_code=404, detail=f"Symbol {symbol} not in IBEX 35")
     
     try:
@@ -482,7 +484,7 @@ def run_backtest(
     📱 MÓVIL: Backtest de estrategia EA.
     Retorna métricas de performance histórica.
     """
-    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
         # raise HTTPException(status_code=404, detail=f"Symbol {symbol} not in IBEX 35")
     
     try:
@@ -613,7 +615,7 @@ def daily(symbol: str):
     - Yahoo Finance como proveedor principal
     - Twelve Data como respaldo
     """
-    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
         raise HTTPException(
             status_code=404, 
             detail=f"Símbolo '{symbol}' no encontrado en IBEX 35. Usa símbolos como SAN.MC, BBVA.MC, etc. Ver / para lista completa."
@@ -639,7 +641,7 @@ def daily_signals(
     Devuelve OHLCV con indicadores técnicos y recomendaciones (ensemble).
     Parámetros: limit (default 30), order (asc|desc, default desc)
     """
-    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
         raise HTTPException(
             status_code=404,
             detail=f"Símbolo '{symbol}' no encontrado en IBEX 35. Usa símbolos como SAN.MC, BBVA.MC, etc. Ver / para lista completa."
@@ -670,7 +672,7 @@ def dashboard(
     - 5d: Últimos 5 días con datos diarios
     """
     # Validar símbolo
-    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
         available_symbols = ', '.join(sorted(list(IBEX_35_SYMBOLS.keys())[:10]))
         error_html = f"""
         <!DOCTYPE html>
@@ -794,7 +796,7 @@ def get_stock_data_timeframe(
     - 1d: Datos diarios (últimos 6 meses por defecto)
     - 5d: Datos diarios (últimos 5 días)
     """
-    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
         raise HTTPException(status_code=404, detail=f"Símbolo '{symbol}' no encontrado")
     
     try:
@@ -838,7 +840,7 @@ def add_to_favorites(
     """
     ⭐ Añade un símbolo a favoritos.
     """
-    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
         raise HTTPException(status_code=404, detail=f"Símbolo '{symbol}' no encontrado")
     
     result = add_favorite(symbol, user_id)
@@ -913,7 +915,7 @@ def create_price_alert(
     - email: Solo email
     - both: Ambos
     """
-    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
         raise HTTPException(status_code=404, detail=f"Símbolo '{symbol}' no encontrado")
     
     try:
@@ -994,7 +996,7 @@ def manual_check_alerts(symbol: str):
     🔍 Verifica manualmente alertas para un símbolo (útil para testing).
     En producción, esto debería ejecutarse automáticamente cada X minutos.
     """
-    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
         raise HTTPException(status_code=404, detail=f"Símbolo '{symbol}' no encontrado")
     
     try:
@@ -1031,6 +1033,24 @@ def manual_check_alerts(symbol: str):
 
 
 # ==================== ADMIN ====================
+
+@app.post("/api/v1/admin/check-alerts-now")
+def manually_check_alerts():
+    """
+    🔔 Verificar TODAS las alertas activas manualmente (admin).
+    
+    Endpoint para ejecutar manualmente la verificación de alertas,
+    ya que el scheduler automático está deshabilitado en Railway.
+    """
+    try:
+        check_all_alerts()
+        return {
+            "status": "success",
+            "message": "Verificación de alertas completada. Revisa los logs del servidor."
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al verificar alertas: {str(e)}")
+
 
 @app.get("/api/v1/admin/test-email")
 def test_email_configuration():

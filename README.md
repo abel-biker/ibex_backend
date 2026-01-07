@@ -1,6 +1,21 @@
 # 📈 IBEX 35 Trading System - Danelfin Style + Expert Advisors
 
+**Versión:** 2.2.1 (Hotfix - Enero 2026)  
+**Estado:** ✅ Estable en Railway
+
 Sistema completo de análisis y trading automático para el IBEX 35, inspirado en **Danelfin** con **Expert Advisors** tipo MetaTrader 4/5. Optimizado para Android.
+
+## 🚨 Última Actualización (v2.2.1)
+
+**Hotfix crítico aplicado:** Scheduler de alertas deshabilitado temporalmente para resolver bloqueos en Railway. Las alertas ahora se verifican manualmente vía endpoint:
+
+```bash
+POST /api/v1/admin/check-alerts-now
+```
+
+Ver [CHANGELOG_v2.2.1.md](CHANGELOG_v2.2.1.md) para detalles completos.
+
+---
 
 ## 🎯 Características Principales
 

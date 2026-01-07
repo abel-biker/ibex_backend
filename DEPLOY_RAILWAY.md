@@ -1,5 +1,24 @@
 # 🚀 Guía de Despliegue en Railway
 
+## 🚨 PROBLEMA RESUELTO: Contenedor Bloqueado
+
+**Síntoma:** Railway muestra "contenedor bloqueado" y pide confirmación para reiniciar.
+
+**Causa:** El scheduler de APScheduler ejecutándose en background consumía recursos y causaba timeouts.
+
+**Solución aplicada:**
+1. ✅ Scheduler deshabilitado temporalmente en `app/main.py`
+2. ✅ Nuevo endpoint manual: `POST /api/v1/admin/check-alerts-now`
+3. ✅ Opción futura: Migrar a Railway Cron Jobs (servicio separado)
+
+**Para reiniciar después del fix:**
+1. Haz commit y push de estos cambios
+2. Espera a que Railway detecte los cambios
+3. Si sigue bloqueado, acepta "Reiniciar contenedor bloqueado"
+4. La aplicación arrancará limpia sin el scheduler problemático
+
+---
+
 ## Actualizar tu app en Railway
 
 ### Opción 1: Desde GitHub (Recomendada)
