@@ -615,11 +615,11 @@ def daily(symbol: str):
     - Yahoo Finance como proveedor principal
     - Twelve Data como respaldo
     """
-    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
-        raise HTTPException(
-            status_code=404, 
-            detail=f"Símbolo '{symbol}' no encontrado en IBEX 35. Usa símbolos como SAN.MC, BBVA.MC, etc. Ver / para lista completa."
-        )
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier símbolo
+    #     raise HTTPException(
+    #         status_code=404, 
+    #         detail=f"Símbolo '{symbol}' no encontrado en IBEX 35. Usa símbolos como SAN.MC, BBVA.MC, etc. Ver / para lista completa."
+    #     )
     
     try:
         data = get_daily_data(symbol)
@@ -641,11 +641,11 @@ def daily_signals(
     Devuelve OHLCV con indicadores técnicos y recomendaciones (ensemble).
     Parámetros: limit (default 30), order (asc|desc, default desc)
     """
-    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
-        raise HTTPException(
-            status_code=404,
-            detail=f"Símbolo '{symbol}' no encontrado en IBEX 35. Usa símbolos como SAN.MC, BBVA.MC, etc. Ver / para lista completa."
-        )
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier símbolo
+    #     raise HTTPException(
+    #         status_code=404,
+    #         detail=f"Símbolo '{symbol}' no encontrado en IBEX 35. Usa símbolos como SAN.MC, BBVA.MC, etc. Ver / para lista completa."
+    #     )
     
     try:
         signals = compute_signals(symbol, limit=limit, order=order)
@@ -672,37 +672,37 @@ def dashboard(
     - 5d: Últimos 5 días con datos diarios
     """
     # Validar símbolo
-    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
-        available_symbols = ', '.join(sorted(list(IBEX_35_SYMBOLS.keys())[:10]))
-        error_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Error - Símbolo Inválido</title>
-            <meta charset="utf-8">
-            <style>
-                body {{ font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px; }}
-                .error {{ background: #ffebee; border-left: 4px solid #f44336; padding: 20px; border-radius: 4px; }}
-                .symbols {{ background: #f5f5f5; padding: 15px; margin: 20px 0; border-radius: 4px; }}
-                a {{ color: #1976d2; text-decoration: none; }}
-                a:hover {{ text-decoration: underline; }}
-            </style>
-        </head>
-        <body>
-            <div class="error">
-                <h2>❌ Símbolo '{symbol}' no encontrado</h2>
-                <p>Este símbolo no pertenece al IBEX 35.</p>
-            </div>
-            <div class="symbols">
-                <h3>📊 Símbolos válidos:</h3>
-                <p>Ejemplos: {available_symbols}, ...</p>
-                <p><a href="/">Ver lista completa de símbolos →</a></p>
-            </div>
-            <p><a href="/dashboard/SAN.MC">Ver ejemplo: Dashboard de Santander</a></p>
-        </body>
-        </html>
-        """
-        return HTMLResponse(content=error_html, status_code=404)
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier símbolo
+    #     available_symbols = ', '.join(sorted(list(IBEX_35_SYMBOLS.keys())[:10]))
+    #     error_html = f"""
+    #     <!DOCTYPE html>
+    #     <html>
+    #     <head>
+    #         <title>Error - Símbolo Inválido</title>
+    #         <meta charset="utf-8">
+    #         <style>
+    #             body {{ font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px; }}
+    #             .error {{ background: #ffebee; border-left: 4px solid #f44336; padding: 20px; border-radius: 4px; }}
+    #             .symbols {{ background: #f5f5f5; padding: 15px; margin: 20px 0; border-radius: 4px; }}
+    #             a {{ color: #1976d2; text-decoration: none; }}
+    #             a:hover {{ text-decoration: underline; }}
+    #         </style>
+    #     </head>
+    #     <body>
+    #         <div class="error">
+    #             <h2>❌ Símbolo '{symbol}' no encontrado</h2>
+    #             <p>Este símbolo no pertenece al IBEX 35.</p>
+    #         </div>
+    #         <div class="symbols">
+    #             <h3>📊 Símbolos válidos:</h3>
+    #             <p>Ejemplos: {available_symbols}, ...</p>
+    #             <p><a href="/">Ver lista completa de símbolos →</a></p>
+    #         </div>
+    #         <p><a href="/dashboard/SAN.MC">Ver ejemplo: Dashboard de Santander</a></p>
+    #     </body>
+    #     </html>
+    #     """
+    #     return HTMLResponse(content=error_html, status_code=404)
     
     try:
         # Mapear timeframe a interval/period para Yahoo
@@ -796,8 +796,8 @@ def get_stock_data_timeframe(
     - 1d: Datos diarios (últimos 6 meses por defecto)
     - 5d: Datos diarios (últimos 5 días)
     """
-    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
-        raise HTTPException(status_code=404, detail=f"Símbolo '{symbol}' no encontrado")
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier símbolo
+    #     raise HTTPException(status_code=404, detail=f"Símbolo '{symbol}' no encontrado")
     
     try:
         # Mapear timeframes
@@ -840,8 +840,8 @@ def add_to_favorites(
     """
     ⭐ Añade un símbolo a favoritos.
     """
-    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
-        raise HTTPException(status_code=404, detail=f"Símbolo '{symbol}' no encontrado")
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier símbolo
+    #     raise HTTPException(status_code=404, detail=f"Símbolo '{symbol}' no encontrado")
     
     result = add_favorite(symbol, user_id)
     company_info = get_company_info(symbol)
@@ -915,8 +915,8 @@ def create_price_alert(
     - email: Solo email
     - both: Ambos
     """
-    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
-        raise HTTPException(status_code=404, detail=f"Símbolo '{symbol}' no encontrado")
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier símbolo
+    #     raise HTTPException(status_code=404, detail=f"Símbolo '{symbol}' no encontrado")
     
     try:
         result = create_alert(
@@ -996,8 +996,8 @@ def manual_check_alerts(symbol: str):
     🔍 Verifica manualmente alertas para un símbolo (útil para testing).
     En producción, esto debería ejecutarse automáticamente cada X minutos.
     """
-    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
-        raise HTTPException(status_code=404, detail=f"Símbolo '{symbol}' no encontrado")
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier símbolo
+    #     raise HTTPException(status_code=404, detail=f"Símbolo '{symbol}' no encontrado")
     
     try:
         # Obtener precio actual
