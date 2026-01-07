@@ -1,19 +1,29 @@
 # 📈 IBEX 35 Trading System - Danelfin Style + Expert Advisors
 
-**Versión:** 2.2.1 (Hotfix - Enero 2026)  
+**Versión:** 2.3.0 (Feature Release - Enero 2026)  
 **Estado:** ✅ Estable en Railway
 
 Sistema completo de análisis y trading automático para el IBEX 35, inspirado en **Danelfin** con **Expert Advisors** tipo MetaTrader 4/5. Optimizado para Android.
 
-## 🚨 Última Actualización (v2.2.1)
+## 📚 Documentación
 
-**Hotfix crítico aplicado:** Scheduler de alertas deshabilitado temporalmente para resolver bloqueos en Railway. Las alertas ahora se verifican manualmente vía endpoint:
+- **[Guía para Frontend/Mobile Developers →](FRONTEND_GUIDE.md)** - Ejemplos de código JS/Kotlin para favoritos e historial
+- **[CHANGELOG v2.2.1](CHANGELOG_v2.2.1.md)** - Hotfix scheduler de alertas
+- **[Testing Guide](TESTING_GUIDE.md)** - Guía de testing y validación
+- **[Deploy Railway](DEPLOY_RAILWAY.md)** - Instrucciones de deployment
+
+## 🚨 Última Actualización (v2.3.0)
+
+**✨ Nuevas funcionalidades:**
+- ⭐ **Favoritos**: Guarda hasta 10 símbolos favoritos (auto-gestiona el límite)
+- 📜 **Historial**: Últimos 10 símbolos consultados (se añade automáticamente)
+- 🔗 Persistencia en SQLite con índices optimizados
+
+**Hotfix previo (v2.2.1):** Scheduler de alertas deshabilitado temporalmente para resolver bloqueos en Railway. Las alertas ahora se verifican manualmente vía:
 
 ```bash
 POST /api/v1/admin/check-alerts-now
 ```
-
-Ver [CHANGELOG_v2.2.1.md](CHANGELOG_v2.2.1.md) para detalles completos.
 
 ---
 
@@ -208,7 +218,58 @@ GET /api/v1/watchlist?min_score=7.0
 
 Retorna todas las acciones del IBEX 35 con score >= 7.0 (oportunidades de compra).
 
-### 6. Sectores del IBEX 35
+### 6. Favoritos y Historial ⭐ NUEVO v2.3
+```http
+# Añadir a favoritos (máximo 10, reemplaza el más antiguo)
+POST /api/v1/favorites/SAN.MC
+
+# Ver favoritos
+GET /api/v1/favorites
+
+# Eliminar favorito
+DELETE /api/v1/favorites/SAN.MC
+
+# Ver historial de búsquedas (últimos 10 únicos)
+GET /api/v1/history
+
+# Limpiar historial
+DELETE /api/v1/history
+```
+
+**Respuesta de Favoritos:**
+```json
+{
+  "total": 3,
+  "favorites": [
+    {
+      "id": 1,
+      "symbol": "SAN.MC",
+      "added_at": "2026-01-07 15:30:00",
+      "name": "Banco Santander",
+      "sector": "Bancario"
+    }
+  ]
+}
+```
+
+**Respuesta de Historial:**
+```json
+{
+  "total": 5,
+  "history": [
+    {
+      "symbol": "BBVA.MC",
+      "last_searched": "2026-01-07 15:45:32",
+      "name": "BBVA",
+      "sector": "Bancario"
+    }
+  ]
+}
+```
+
+💡 **El historial se añade automáticamente** cuando consultas `/dashboard/{symbol}` o `/api/v1/stock/{symbol}/score`.
+
+### 7. Sectores del IBEX 35
 ```http
 GET /api/v1/sectors
 ```
@@ -224,18 +285,28 @@ GET /api/v1/sectors
    GET /api/v1/ibex35/ranking?limit=10
    ```
 
-2. **Detalle de Acción**: Al hacer tap en una empresa
+2. **Búsqueda Inteligente**: Mostrar favoritos + historial
+   ```kotlin
+   // Al abrir el campo de búsqueda
+   val favorites = api.get("/api/v1/favorites")
+   val history = api.get("/api/v1/history")
+   
+   // Mostrar primero favoritos (⭐)
+   // Luego historial reciente (📜)
+   ```
+
+3. **Detalle de Acción**: Al hacer tap en una empresa
    ```
    GET /api/v1/stock/{symbol}/score
    GET /api/v1/stock/{symbol}/signals?strategy=ensemble
    ```
 
-3. **Watchlist**: Filtrar oportunidades
+4. **Watchlist**: Filtrar oportunidades
    ```
    GET /api/v1/watchlist?min_score=7.0
    ```
 
-4. **Backtesting**: Validar estrategia antes de invertir
+5. **Backtesting**: Validar estrategia antes de invertir
    ```
    GET /api/v1/stock/{symbol}/backtest?strategy=ensemble
    ```
@@ -244,9 +315,10 @@ GET /api/v1/sectors
 
 1. **Cache**: Cachear rankings por 5-15 minutos
 2. **Refresh**: Pull-to-refresh para actualizar datos
-3. **Notificaciones**: Usar watchlist para alertas push
-4. **Offline**: Guardar último ranking en SQLite local
-5. **Gráficos**: Usar bibliotecas como MPAndroidChart
+3. **Favoritos**: Botón estrella en cada acción para añadir/quitar
+4. **Historial**: Se gestiona automáticamente, sin código extra
+5. **Offline**: Guardar último ranking en SQLite local
+6. **Gráficos**: Usar bibliotecas como MPAndroidChart
 
 ---
 
