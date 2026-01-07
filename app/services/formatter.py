@@ -649,6 +649,49 @@ def generate_html_dashboard(symbol: str, signals: List[Dict], timeframe: str = "
             border-bottom: none;
         }}
         
+        /* Favoritos e Historial */
+        .suggestion-item {{
+            padding: 12px 15px;
+            background: #f9fafb;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        
+        .suggestion-item:hover {{
+            background: #e5e7eb;
+            transform: translateX(5px);
+        }}
+        
+        .suggestion-symbol {{
+            font-weight: 700;
+            color: #111827;
+            font-size: 1.1em;
+        }}
+        
+        .suggestion-name {{
+            color: #6b7280;
+            font-size: 0.9em;
+        }}
+        
+        .remove-fav {{
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: background 0.2s;
+        }}
+        
+        .remove-fav:hover {{
+            background: #dc2626;
+        }}
+        
         td.price {{
             font-weight: 700;
             color: #111827;
@@ -754,6 +797,9 @@ def generate_html_dashboard(symbol: str, signals: List[Dict], timeframe: str = "
         <div class="search-bar">
             <input type="text" id="symbolInput" placeholder="Ingresa símbolo (ej: AAPL, MSFT, ^IBEX)" value="{symbol}" />
             <button onclick="searchSymbol()">🔍 Buscar</button>
+            <button onclick="toggleFavorite('{symbol}')" id="favoriteBtn" style="padding: 12px 20px; background: #fbbf24; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 1em;">
+                ⭐ Favorito
+            </button>
             
             <div class="limit-selector">
                 <label for="timeframeSelect">Vista:</label>
@@ -773,6 +819,20 @@ def generate_html_dashboard(symbol: str, signals: List[Dict], timeframe: str = "
                     <option value="180">6 meses</option>
                     <option value="365">1 año</option>
                 </select>
+            </div>
+        </div>
+        
+        <!-- Favoritos e Historial (inicialmente ocultos) -->
+        <div id="suggestionsPanel" style="display: none; background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <h3 style="margin-bottom: 15px;">⭐ Favoritos <span id="favCount" style="color: #6b7280;">(0)</span></h3>
+                    <div id="favoritesList" style="display: grid; gap: 8px;"></div>
+                </div>
+                <div>
+                    <h3 style="margin-bottom: 15px;">📜 Historial Reciente <span id="histCount" style="color: #6b7280;">(0)</span></h3>
+                    <div id="historyList" style="display: grid; gap: 8px;"></div>
+                </div>
             </div>
         </div>
 
@@ -1403,6 +1463,136 @@ def generate_html_dashboard(symbol: str, signals: List[Dict], timeframe: str = "
                 }}
             }}
         }});
+        
+        // ==================== FAVORITOS E HISTORIAL ====================
+        
+        let favorites = [];
+        let history = [];
+        
+        // Cargar favoritos e historial al inicio
+        async function loadSuggestions() {{
+            try {{
+                const [favRes, histRes] = await Promise.all([
+                    fetch('/api/v1/favorites'),
+                    fetch('/api/v1/history')
+                ]);
+                
+                const favData = await favRes.json();
+                const histData = await histRes.json();
+                
+                favorites = favData.favorites || [];
+                history = histData.history || [];
+                
+                renderSuggestions();
+                updateFavoriteButton();
+            }} catch (error) {{
+                console.error('Error cargando sugerencias:', error);
+            }}
+        }}
+        
+        // Renderizar favoritos e historial
+        function renderSuggestions() {{
+            const favList = document.getElementById('favoritesList');
+            const histList = document.getElementById('historyList');
+            const favCount = document.getElementById('favCount');
+            const histCount = document.getElementById('histCount');
+            
+            // Favoritos
+            favCount.textContent = `(${{favorites.length}}/10)`;
+            if (favorites.length === 0) {{
+                favList.innerHTML = '<p style="color: #9ca3af; font-style: italic;">No hay favoritos aún</p>';
+            }} else {{
+                favList.innerHTML = favorites.map(fav => `
+                    <div class="suggestion-item">
+                        <div onclick="navigateToSymbol('${{fav.symbol}}')">
+                            <div class="suggestion-symbol">${{fav.symbol}}</div>
+                            <div class="suggestion-name">${{fav.name || ''}}</div>
+                        </div>
+                        <button class="remove-fav" onclick="removeFavorite('${{fav.symbol}}')">🗑️</button>
+                    </div>
+                `).join('');
+            }}
+            
+            // Historial
+            histCount.textContent = `(${{history.length}})`;
+            if (history.length === 0) {{
+                histList.innerHTML = '<p style="color: #9ca3af; font-style: italic;">Sin historial</p>';
+            }} else {{
+                histList.innerHTML = history.map(item => `
+                    <div class="suggestion-item" onclick="navigateToSymbol('${{item.symbol}}')">
+                        <div>
+                            <div class="suggestion-symbol">${{item.symbol}}</div>
+                            <div class="suggestion-name">${{item.name || ''}}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }}
+        }}
+        
+        // Toggle favorito actual
+        async function toggleFavorite(symbol) {{
+            const isFavorite = favorites.some(f => f.symbol === symbol);
+            
+            try {{
+                if (isFavorite) {{
+                    await fetch(`/api/v1/favorites/${{symbol}}`, {{ method: 'DELETE' }});
+                    alert('✅ Eliminado de favoritos');
+                }} else {{
+                    await fetch(`/api/v1/favorites/${{symbol}}`, {{ method: 'POST' }});
+                    alert('⭐ Añadido a favoritos');
+                }}
+                
+                await loadSuggestions();
+            }} catch (error) {{
+                alert('❌ Error: ' + error.message);
+            }}
+        }}
+        
+        // Eliminar favorito
+        async function removeFavorite(symbol) {{
+            if (!confirm(`¿Eliminar ${{symbol}} de favoritos?`)) return;
+            
+            try {{
+                await fetch(`/api/v1/favorites/${{symbol}}`, {{ method: 'DELETE' }});
+                await loadSuggestions();
+            }} catch (error) {{
+                alert('❌ Error: ' + error.message);
+            }}
+        }}
+        
+        // Actualizar botón de favorito
+        function updateFavoriteButton() {{
+            const currentSymbol = '{symbol}';
+            const isFavorite = favorites.some(f => f.symbol === currentSymbol);
+            const btn = document.getElementById('favoriteBtn');
+            
+            if (btn) {{
+                btn.textContent = isFavorite ? '⭐ En Favoritos' : '☆ Añadir a Favoritos';
+                btn.style.background = isFavorite ? '#fbbf24' : '#e5e7eb';
+            }}
+        }}
+        
+        // Navegar a símbolo
+        function navigateToSymbol(symbol) {{
+            const timeframe = document.getElementById('timeframeSelect').value;
+            const limit = document.getElementById('limitSelect').value;
+            window.location.href = `/dashboard/${{symbol}}?timeframe=${{timeframe}}&limit=${{limit}}`;
+        }}
+        
+        // Mostrar/ocultar panel de sugerencias al hacer clic en el input
+        document.getElementById('symbolInput').addEventListener('focus', function() {{
+            document.getElementById('suggestionsPanel').style.display = 'block';
+        }});
+        
+        document.getElementById('symbolInput').addEventListener('blur', function() {{
+            // Delay para permitir clicks en las sugerencias
+            setTimeout(() => {{
+                document.getElementById('suggestionsPanel').style.display = 'none';
+            }}, 200);
+        }});
+        
+        // Cargar al inicio
+        loadSuggestions();
     </script>
 </body>
 </html>
