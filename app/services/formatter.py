@@ -844,6 +844,11 @@ def generate_html_dashboard(symbol: str, signals: List[Dict], timeframe: str = "
             </div>
             <div class="header-subtitle" style="margin-top: 8px;">Última actualización: {current_date}</div>
             
+            <!-- Indicador de Usuario -->
+            <div id="userIndicator" style="margin-top: 10px; font-size: 0.9em; color: #6b7280;">
+                👤 Usuario: <span id="userIdDisplay" style="font-family: monospace; background: #f3f4f6; padding: 2px 8px; border-radius: 4px;">Cargando...</span>
+            </div>
+            
             <!-- Botón de Alertas -->
             <div style="margin-top: 20px;">
                 <button onclick="toggleAlertForm()" style="padding: 12px 28px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 1em; transition: transform 0.2s;">
@@ -1469,12 +1474,26 @@ def generate_html_dashboard(symbol: str, signals: List[Dict], timeframe: str = "
         let favorites = [];
         let history = [];
         
+        // Generar o recuperar User ID único (localStorage)
+        function getUserId() {{
+            let userId = localStorage.getItem('ibex_user_id');
+            if (!userId) {{
+                // Generar UUID único
+                userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('ibex_user_id', userId);
+                console.log('✨ Nuevo usuario creado:', userId);
+            }}
+            return userId;
+        }}
+        
+        const USER_ID = getUserId();
+        
         // Cargar favoritos e historial al inicio
         async function loadSuggestions() {{
             try {{
                 const [favRes, histRes] = await Promise.all([
-                    fetch('/api/v1/favorites'),
-                    fetch('/api/v1/history')
+                    fetch(`/api/v1/favorites?user_id=${{USER_ID}}`),
+                    fetch(`/api/v1/history?user_id=${{USER_ID}}`)
                 ]);
                 
                 const favData = await favRes.json();
@@ -1535,10 +1554,10 @@ def generate_html_dashboard(symbol: str, signals: List[Dict], timeframe: str = "
             
             try {{
                 if (isFavorite) {{
-                    await fetch(`/api/v1/favorites/${{symbol}}`, {{ method: 'DELETE' }});
+                    await fetch(`/api/v1/favorites/${{symbol}}?user_id=${{USER_ID}}`, {{ method: 'DELETE' }});
                     alert('✅ Eliminado de favoritos');
                 }} else {{
-                    await fetch(`/api/v1/favorites/${{symbol}}`, {{ method: 'POST' }});
+                    await fetch(`/api/v1/favorites/${{symbol}}?user_id=${{USER_ID}}`, {{ method: 'POST' }});
                     alert('⭐ Añadido a favoritos');
                 }}
                 
@@ -1553,7 +1572,7 @@ def generate_html_dashboard(symbol: str, signals: List[Dict], timeframe: str = "
             if (!confirm(`¿Eliminar ${{symbol}} de favoritos?`)) return;
             
             try {{
-                await fetch(`/api/v1/favorites/${{symbol}}`, {{ method: 'DELETE' }});
+                await fetch(`/api/v1/favorites/${{symbol}}?user_id=${{USER_ID}}`, {{ method: 'DELETE' }});
                 await loadSuggestions();
             }} catch (error) {{
                 alert('❌ Error: ' + error.message);
@@ -1591,6 +1610,9 @@ def generate_html_dashboard(symbol: str, signals: List[Dict], timeframe: str = "
                 document.getElementById('suggestionsPanel').style.display = 'none';
             }}, 200);
         }});
+        
+        // Mostrar User ID
+        document.getElementById('userIdDisplay').textContent = USER_ID.substring(0, 20) + '...';
         
         // Cargar al inicio
         loadSuggestions();
