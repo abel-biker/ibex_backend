@@ -26,7 +26,8 @@ from app.utils.cache import cache_with_ttl, clear_cache, get_cache_stats
 from app.models.user_data import (
     add_favorite, remove_favorite, get_favorites, is_favorite,
     create_alert, get_alerts, delete_alert, update_alert_status,
-    check_alerts_for_symbol, get_all_active_alerts
+    check_alerts_for_symbol, get_all_active_alerts,
+    add_to_history, get_search_history, clear_search_history
 )
 from app.services.notifications import send_price_alert_email, test_email_config
 
@@ -176,6 +177,15 @@ def root():
             <div class="endpoint">
                 <strong>GET /dashboard/{{symbol}}</strong> - Dashboard visual interactivo<br>
                 <a href="/dashboard/SAN.MC?limit=30">Ver dashboard: Santander</a>
+            </div>
+            <div class="endpoint">
+                <strong>POST /api/v1/favorites/{{symbol}}</strong> - Añadir a favoritos (máx 10)<br>
+                <strong>GET /api/v1/favorites</strong> - Ver favoritos<br>
+                <a href="/api/v1/favorites">Ver mis favoritos</a>
+            </div>
+            <div class="endpoint">
+                <strong>GET /api/v1/history</strong> - Historial de búsquedas (últimos 10)<br>
+                <a href="/api/v1/history">Ver mi historial</a>
             </div>
             <div class="endpoint">
                 <strong>GET /health</strong> - Estado del servicio<br>
@@ -345,10 +355,13 @@ def get_stock_score(symbol: str):
     
     ⚡ Usa caché de 5 minutos.
     """
-    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier s�mbolo
+    # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier símbolo
         # raise HTTPException(status_code=404, detail=f"Symbol {symbol} not in IBEX 35")
     
     try:
+        # Añadir al historial de búsquedas
+        add_to_history(symbol)
+        
         # Usar datos cacheados
         df = get_stock_data_cached(symbol)
         if df is None:
@@ -705,6 +718,9 @@ def dashboard(
     #     return HTMLResponse(content=error_html, status_code=404)
     
     try:
+        # Añadir al historial de búsquedas
+        add_to_history(symbol)
+        
         # Mapear timeframe a interval/period para Yahoo
         interval_map = {
             "1h": ("5m", "1d"),     # Última hora: datos cada 5 minutos del último día
@@ -890,6 +906,44 @@ def list_favorites(user_id: str = Query("default")):
         "total": len(enriched),
         "favorites": enriched
     }
+
+
+# ==================== ENDPOINTS NUEVOS: HISTORIAL ====================
+
+@app.get("/api/v1/history")
+def get_history(user_id: str = Query("default")):
+    """
+    📜 Obtiene el historial de búsquedas (últimos 10 símbolos únicos consultados).
+    """
+    history = get_search_history(user_id)
+    
+    # Enriquecer con información de las empresas
+    enriched = []
+    for item in history:
+        symbol = item["symbol"]
+        if symbol in IBEX_35_SYMBOLS:
+            company_info = get_company_info(symbol)
+            enriched.append({
+                **item,
+                "name": company_info["name"],
+                "sector": company_info["sector"]
+            })
+        else:
+            enriched.append(item)
+    
+    return {
+        "total": len(enriched),
+        "history": enriched
+    }
+
+
+@app.delete("/api/v1/history")
+def clear_history(user_id: str = Query("default")):
+    """
+    🗑️ Limpia todo el historial de búsquedas del usuario.
+    """
+    result = clear_search_history(user_id)
+    return result
 
 
 # ==================== ENDPOINTS NUEVOS: ALERTAS ====================

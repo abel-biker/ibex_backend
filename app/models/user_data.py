@@ -47,10 +47,21 @@ def init_db():
         )
     """)
     
+    # Tabla de historial de búsquedas
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS search_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL DEFAULT 'default',
+            symbol TEXT NOT NULL,
+            searched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
     # Índices para mejor performance
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_favorites_user ON favorites(user_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_alerts_user ON price_alerts(user_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_alerts_active ON price_alerts(is_active, triggered)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_history_user ON search_history(user_id)")
     
     conn.commit()
     conn.close()
@@ -59,12 +70,26 @@ def init_db():
 # ==================== FAVORITOS ====================
 
 def add_favorite(symbol: str, user_id: str = "default") -> Dict:
-    """Añade un símbolo a favoritos"""
+    """Añade un símbolo a favoritos (máximo 10)"""
     init_db()
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
     try:
+        # Verificar límite de 10 favoritos
+        cursor.execute(
+            "SELECT COUNT(*) FROM favorites WHERE user_id = ?",
+            (user_id,)
+        )
+        count = cursor.fetchone()[0]
+        
+        if count >= 10:
+            # Eliminar el más antiguo para hacer espacio
+            cursor.execute(
+                "DELETE FROM favorites WHERE id IN (SELECT id FROM favorites WHERE user_id = ? ORDER BY added_at ASC LIMIT 1)",
+                (user_id,)
+            )
+        
         cursor.execute(
             "INSERT INTO favorites (user_id, symbol) VALUES (?, ?)",
             (user_id, symbol.upper())
@@ -290,6 +315,79 @@ def check_alerts_for_symbol(symbol: str, current_price: float) -> List[Dict]:
     
     conn.close()
     return triggered_alerts
+
+
+# ==================== HISTORIAL DE BÚSQUEDAS ====================
+
+def add_to_history(symbol: str, user_id: str = "default") -> Dict:
+    """Añade un símbolo al historial de búsquedas (últimos 10)"""
+    init_db()
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    try:
+        # Añadir al historial
+        cursor.execute(
+            "INSERT INTO search_history (user_id, symbol) VALUES (?, ?)",
+            (user_id, symbol.upper())
+        )
+        
+        # Mantener solo los últimos 10 registros por usuario
+        cursor.execute("""
+            DELETE FROM search_history 
+            WHERE id NOT IN (
+                SELECT id FROM search_history 
+                WHERE user_id = ? 
+                ORDER BY searched_at DESC 
+                LIMIT 10
+            ) AND user_id = ?
+        """, (user_id, user_id))
+        
+        conn.commit()
+        return {"status": "added", "symbol": symbol.upper()}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+    finally:
+        conn.close()
+
+
+def get_search_history(user_id: str = "default") -> List[Dict]:
+    """Obtiene el historial de búsquedas (últimos 10, sin duplicados consecutivos)"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT DISTINCT symbol, MAX(searched_at) as last_search
+        FROM search_history 
+        WHERE user_id = ? 
+        GROUP BY symbol
+        ORDER BY last_search DESC 
+        LIMIT 10
+    """, (user_id,))
+    
+    rows = cursor.fetchall()
+    conn.close()
+    
+    return [
+        {"symbol": row[0], "last_searched": row[1]}
+        for row in rows
+    ]
+
+
+def clear_search_history(user_id: str = "default") -> Dict:
+    """Limpia todo el historial de búsquedas de un usuario"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute(
+        "DELETE FROM search_history WHERE user_id = ?",
+        (user_id,)
+    )
+    deleted = cursor.rowcount
+    conn.commit()
+    conn.close()
+    
+    return {"status": "cleared", "deleted_count": deleted}
 
 
 def get_all_active_alerts() -> List[Dict]:
