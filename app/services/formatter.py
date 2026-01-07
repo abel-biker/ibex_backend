@@ -797,8 +797,8 @@ def generate_html_dashboard(symbol: str, signals: List[Dict], timeframe: str = "
         <div class="search-bar">
             <input type="text" id="symbolInput" placeholder="Ingresa símbolo (ej: AAPL, MSFT, ^IBEX)" value="{symbol}" />
             <button onclick="searchSymbol()">🔍 Buscar</button>
-            <button onclick="toggleFavorite('{symbol}')" id="favoriteBtn" style="padding: 12px 20px; background: #fbbf24; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 1em;">
-                ⭐ Favorito
+            <button onclick="toggleFavorite('{symbol}')" id="favoriteBtn" style="padding: 12px 20px; background: linear-gradient(135deg, #6b7280, #4b5563); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 1em; transition: all 0.3s;">
+                ☆ Añadir a Favoritos
             </button>
             
             <div class="limit-selector">
@@ -1568,7 +1568,8 @@ def generate_html_dashboard(symbol: str, signals: List[Dict], timeframe: str = "
             
             if (btn) {{
                 btn.textContent = isFavorite ? '⭐ En Favoritos' : '☆ Añadir a Favoritos';
-                btn.style.background = isFavorite ? '#fbbf24' : '#e5e7eb';
+                btn.style.background = isFavorite ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' : 'linear-gradient(135deg, #6b7280, #4b5563)';
+                btn.style.color = 'white';
             }}
         }}
         
