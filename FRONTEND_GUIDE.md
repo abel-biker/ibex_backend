@@ -1,8 +1,66 @@
 # 📱 Guía para Desarrolladores Frontend/Mobile
 
-**Versión API:** 2.3.0  
+**Versión API:** 2.3.1  
 **Base URL Producción:** `https://web-production-4c740.up.railway.app`  
 **Documentación Interactiva:** `/docs`
+
+---
+
+## 🔐 Sistema de Identificación (Sin Login)
+
+La API usa **identificación anónima basada en localStorage** para personalizar favoritos e historial sin requerir login.
+
+### ¿Cómo funciona?
+
+1. **Primera visita:** Se genera un UUID único: `user_1736284530_abc123xyz`
+2. **Se guarda en localStorage:** Persiste entre sesiones del navegador
+3. **Cada request incluye el user_id:** Los datos son personales por navegador
+4. **Si borran localStorage/cookies:** Se genera un nuevo ID (se pierden favoritos, comportamiento esperado)
+
+### Implementación JavaScript
+
+```javascript
+// Generar o recuperar User ID único
+function getUserId() {
+  let userId = localStorage.getItem('ibex_user_id');
+  if (!userId) {
+    userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('ibex_user_id', userId);
+    console.log('✨ Nuevo usuario creado:', userId);
+  }
+  return userId;
+}
+
+const USER_ID = getUserId();
+
+// Usar en todas las llamadas
+fetch(`/api/v1/favorites?user_id=${USER_ID}`)
+```
+
+### Implementación Kotlin (Android)
+
+```kotlin
+object UserManager {
+    private const val PREFS_NAME = "ibex_prefs"
+    private const val KEY_USER_ID = "user_id"
+    
+    fun getUserId(context: Context): String {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        var userId = prefs.getString(KEY_USER_ID, null)
+        
+        if (userId == null) {
+            userId = "user_${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(9)}"
+            prefs.edit().putString(KEY_USER_ID, userId).apply()
+            Log.d("UserManager", "✨ Nuevo usuario: $userId")
+        }
+        
+        return userId
+    }
+}
+
+// Usar en toda la app
+val userId = UserManager.getUserId(context)
+```
 
 ---
 
@@ -13,7 +71,18 @@
 ```javascript
 // JavaScript/TypeScript
 const API_BASE = 'https://web-production-4c740.up.railway.app';
-const USER_ID = 'default'; // O un ID único por usuario
+
+// Obtener o generar User ID
+function getUserId() {
+  let userId = localStorage.getItem('ibex_user_id');
+  if (!userId) {
+    userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('ibex_user_id', userId);
+  }
+  return userId;
+}
+
+const USER_ID = getUserId();
 
 async function apiGet(endpoint) {
   const response = await fetch(`${API_BASE}${endpoint}`);
@@ -34,10 +103,14 @@ async function apiPost(endpoint, body = {}) {
 // Kotlin (Android)
 object ApiClient {
     private const val BASE_URL = "https://web-production-4c740.up.railway.app"
-    private const val USER_ID = "default"
     
-    suspend fun getFavorites(): FavoritesResponse {
-        return ktorClient.get("$BASE_URL/api/v1/favorites?user_id=$USER_ID")
+    private fun getUserId(context: Context): String {
+        return UserManager.getUserId(context)
+    }
+    
+    suspend fun getFavorites(context: Context): FavoritesResponse {
+        val userId = getUserId(context)
+        return ktorClient.get("$BASE_URL/api/v1/favorites?user_id=$userId")
     }
 }
 ```
