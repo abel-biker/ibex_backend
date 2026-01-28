@@ -1,7 +1,8 @@
 # 📈 IBEX 35 Trading System - Danelfin Style + Expert Advisors + AI
 
 **Versión:** 2.3.0 (AI Release - Enero 2026)  
-**Estado:** ✅ Funcionando en local y Railway
+**Estado:** ✅ Funcionando en local y Railway  
+**Última actualización:** 28 Enero 2026
 
 Sistema completo de análisis y trading automático para el IBEX 35, inspirado en **Danelfin** con **Expert Advisors** tipo MetaTrader 4/5 + **Sistema Híbrido AI** (XGBoost + Prophet + FinBERT). Optimizado para Android.
 
