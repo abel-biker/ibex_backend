@@ -263,7 +263,8 @@ def health_check():
         "timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
         "total_symbols": len(IBEX_35_SYMBOLS),
         "cache": cache_stats,
-        "ai_system": hybrid_status
+        "ai_system": hybrid_status,
+        "deployment": "forced"  # Force Railway redeploy
     }
 
 @app.post("/api/v1/admin/cache/clear")
