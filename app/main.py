@@ -854,9 +854,10 @@ def dashboard(
         signals = compute_signals(symbol, limit=limit, order="desc", interval=interval, period=period)
         if not signals:
             company_info = get_company_info(symbol)
+            company_name = company_info.get('name', symbol) if company_info else symbol
             msg = (
-                f"No hay datos recientes para {company_info['name']} ({symbol}). "
-                "Puede que el proveedor de datos esté temporalmente no disponible."
+                f"No hay datos recientes para {company_name} ({symbol}). "
+                "Puede que el proveedor de datos esté temporalmente no disponible o el símbolo no sea válido."
             )
             return HTMLResponse(content=f"<h2>{msg}</h2><p><a href='/'>Volver al inicio</a></p>", status_code=404)
         
