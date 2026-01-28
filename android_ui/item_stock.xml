@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView 
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/cardStock"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    app:cardElevation="2dp"
+    app:cardCornerRadius="12dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp">
+
+        <!-- Icono de favorito -->
+        <ImageView
+            android:id="@+id/iconFavorite"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_star_outline"
+            android:contentDescription="Favorito"
+            app:tint="?attr/colorPrimary"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <!-- Nombre y símbolo -->
+        <TextView
+            android:id="@+id/textStockName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="?attr/colorOnSurface"
+            tools:text="Banco Santander"
+            app:layout_constraintTop_toTopOf="@id/iconFavorite"
+            app:layout_constraintStart_toEndOf="@id/iconFavorite"
+            app:layout_constraintEnd_toStartOf="@id/textPrice" />
+
+        <TextView
+            android:id="@+id/textStockSymbol"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:textSize="12sp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            tools:text="SAN.MC • Financiero"
+            app:layout_constraintTop_toBottomOf="@id/textStockName"
+            app:layout_constraintStart_toEndOf="@id/iconFavorite"
+            app:layout_constraintEnd_toStartOf="@id/textPrice" />
+
+        <!-- Precio y cambio -->
+        <TextView
+            android:id="@+id/textPrice"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            tools:text="€10.60"
+            app:layout_constraintTop_toTopOf="@id/iconFavorite"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <TextView
+            android:id="@+id/textPriceChange"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            tools:text="+2.4%"
+            app:layout_constraintTop_toBottomOf="@id/textPrice"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- Divider -->
+        <View
+            android:id="@+id/divider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="12dp"
+            android:background="?attr/colorOutlineVariant"
+            app:layout_constraintTop_toBottomOf="@id/textStockSymbol" />
+
+        <!-- Score y Rating -->
+        <LinearLayout
+            android:id="@+id/layoutScore"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical"
+            app:layout_constraintTop_toBottomOf="@id/divider"
+            app:layout_constraintStart_toStartOf="parent">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Puntuación AI"
+                android:textSize="10sp"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <TextView
+                android:id="@+id/textScore"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textStyle="bold"
+                android:textSize="24sp"
+                tools:text="8.5"
+                tools:textColor="#4CAF50" />
+
+            <TextView
+                android:id="@+id/textRating"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                tools:text="STRONG BUY"
+                tools:textColor="#4CAF50" />
+
+        </LinearLayout>
+
+        <!-- Señal AI -->
+        <LinearLayout
+            android:id="@+id/layoutSignal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical"
+            android:gravity="center"
+            app:layout_constraintTop_toBottomOf="@id/divider"
+            app:layout_constraintStart_toEndOf="@id/layoutScore"
+            app:layout_constraintEnd_toStartOf="@id/layoutConfidence">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Señal ML"
+                android:textSize="10sp"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipSignal"
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textStyle="bold"
+                tools:text="BUY"
+                tools:chipBackgroundColor="#4CAF50" />
+
+            <TextView
+                android:id="@+id/textProbability"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                tools:text="94%"
+                tools:textColor="#4CAF50" />
+
+        </LinearLayout>
+
+        <!-- Confianza -->
+        <LinearLayout
+            android:id="@+id/layoutConfidence"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical"
+            android:gravity="center"
+            app:layout_constraintTop_toBottomOf="@id/divider"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Confianza"
+                android:textSize="10sp"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <TextView
+                android:id="@+id/textConfidence"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                tools:text="HIGH"
+                tools:textColor="#4CAF50" />
+
+            <com.google.android.material.progressindicator.CircularProgressIndicator
+                android:id="@+id/progressConfidence"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginTop="4dp"
+                app:indicatorSize="40dp"
+                app:trackThickness="4dp"
+                tools:progress="85" />
+
+        </LinearLayout>
+
+        <!-- Razón de la predicción -->
+        <TextView
+            android:id="@+id/textReason"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:padding="8dp"
+            android:background="@drawable/background_reason"
+            android:textSize="12sp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            tools:text="🤖 ML predice subida con 94% probabilidad"
+            app:layout_constraintTop_toBottomOf="@id/layoutScore" />
+
+        <!-- Metodología -->
+        <TextView
+            android:id="@+id/textMethodology"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="10sp"
+            android:textStyle="italic"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            tools:text="Hybrid AI: Danelfin + XGBoost + Prophet + FinBERT"
+            app:layout_constraintTop_toBottomOf="@id/textReason" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</com.google.android.material.card.MaterialCardView>

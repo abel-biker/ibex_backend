@@ -64,19 +64,23 @@
             result.innerHTML = '⏳ Cargando...';
             
             try {
-                const response = await fetch(`${API_BASE}/api/v1/stock/${symbol}/score`);
+                const response = await fetch(`${API_BASE}/api/v1/stock/${symbol}/score?use_ai=true`);
                 const data = await response.json();
                 
                 result.innerHTML = `
                     <h3>${data.name} (${data.symbol})</h3>
                     <p class="confidence">Confianza: ${data.confidence}</p>
                     <p>Score: ${data.score}/10 - ${data.rating}</p>
+                    <p>Señal: <strong>${data.signal}</strong></p>
                     <p>Precio: €${data.price}</p>
-                    <h4>Sub-scores:</h4>
+                    <p>💡 ${data.reason}</p>
+                    <p>🤖 Metodología: ${data.methodology}</p>
+                    <h4>Componentes IA:</h4>
                     <ul>
-                        <li>Técnico: ${data.sub_scores.technical}</li>
-                        <li>Momentum: ${data.sub_scores.momentum}</li>
-                        <li>Sentiment: ${data.sub_scores.sentiment}</li>
+                        <li>🔧 Técnico: ${data.components.technical.score}/10 (${data.components.technical.weight})</li>
+                        <li>🤖 ML Prediction: ${data.components.ml_prediction.score}/10 - ${data.components.ml_prediction.signal} (prob: ${(data.components.ml_prediction.probability * 100).toFixed(1)}%) (${data.components.ml_prediction.weight})</li>
+                        <li>📈 Prophet: ${data.components.prophet.score}/10 - Cambio predicho: ${data.components.prophet.predicted_change_pct.toFixed(2)}% (${data.components.prophet.weight})</li>
+                        <li>📰 Sentiment: ${data.components.sentiment.score}/10 - ${data.components.sentiment.sentiment} (${data.components.sentiment.weight})</li>
                     </ul>
                     <h4>JSON completo:</h4>
                     <pre>${JSON.stringify(data, null, 2)}</pre>

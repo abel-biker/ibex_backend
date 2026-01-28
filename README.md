@@ -5,6 +5,25 @@
 
 Sistema completo de análisis y trading automático para el IBEX 35, inspirado en **Danelfin** con **Expert Advisors** tipo MetaTrader 4/5 + **Sistema Híbrido AI** (XGBoost + Prophet + FinBERT). Optimizado para Android.
 
+---
+
+## ⭐ Características Principales
+
+✅ **Sistema Híbrido AI v2.3.0** - XGBoost + Prophet + FinBERT (predice tendencia a 15 días)  
+✅ **Scoring tipo Danelfin (0-10)** - Análisis técnico completo con RSI, MACD, SMA, Bollinger  
+✅ **5 Expert Advisors** - RSI, MACD, MA Crossover, Bollinger, Ensemble (tipo MetaTrader)  
+✅ **Backtesting de estrategias** - Valida antes de invertir con métricas detalladas  
+✅ **35 empresas del IBEX 35** - Datos en tiempo real vía Yahoo Finance  
+✅ **Machine Learning entrenado** - Modelo XGBoost con 1216 días de datos históricos  
+✅ **Predicción con Prophet** - Series temporales de Meta para forecasting de precio  
+✅ **Análisis de sentimiento FinBERT** - BERT especializado en noticias financieras  
+✅ **Gestión de favoritos y alertas** - Sistema completo de notificaciones  
+✅ **Optimizado para apps móviles Android** - Cliente Retrofit incluido ([android_example.kt](android_example.kt))  
+✅ **API REST completa** - FastAPI con documentación interactiva Swagger  
+✅ **Cache inteligente** - Reduce latencia y costos de API  
+
+---
+
 ## 🆕 NUEVO en v2.3.0: Sistema Híbrido AI
 
 ### 🤖 4 Metodologías Combinadas:

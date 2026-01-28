@@ -55,10 +55,43 @@ data class StockScoreResponse(
     val price: Float,
     val score: Float,
     val rating: String,
+    val signal: String,              // ← BUY/SELL/HOLD
     val confidence: String,
-    val sub_scores: SubScores,
-    val signals: List<String>,
+    val reason: String,              // ← Razón de la predicción
+    val methodology: String,         // ← "Hybrid AI: Danelfin + XGBoost + Prophet + FinBERT"
+    val components: AIComponents,    // ← Componentes de IA
     val indicators: Indicators
+)
+
+data class AIComponents(
+    val technical: ComponentScore,
+    val ml_prediction: MLPrediction,
+    val prophet: ProphetPrediction,
+    val sentiment: SentimentScore
+)
+
+data class ComponentScore(
+    val score: Float,
+    val weight: String
+)
+
+data class MLPrediction(
+    val score: Float,
+    val signal: String,
+    val probability: Float,
+    val weight: String
+)
+
+data class ProphetPrediction(
+    val score: Float,
+    val predicted_change_pct: Float,
+    val weight: String
+)
+
+data class SentimentScore(
+    val score: Float,
+    val sentiment: String,
+    val weight: String
 )
 
 data class SubScores(
@@ -132,12 +165,14 @@ interface IBEX35ApiService {
     suspend fun getRanking(
         @Query("limit") limit: Int = 35,
         @Query("sector") sector: String? = null,
-        @Query("min_score") minScore: Float? = null
+        @Query("min_score") minScore: Float? = null,
+        @Query("use_ai") useAI: Boolean = true  // ← Activa IA por defecto
     ): Response<RankingResponse>
     
     @GET("/api/v1/stock/{symbol}/score")
     suspend fun getStockScore(
-        @Path("symbol") symbol: String
+        @Path("symbol") symbol: String,
+        @Query("use_ai") useAI: Boolean = true  // ← Activa IA por defecto
     ): Response<StockScoreResponse>
     
     @GET("/api/v1/stock/{symbol}/signals")
