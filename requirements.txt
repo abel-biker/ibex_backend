@@ -7,3 +7,20 @@ requests
 python-dotenv
 python-multipart
 apscheduler
+
+# Machine Learning & AI
+xgboost>=1.7.0
+scikit-learn>=1.2.0
+joblib>=1.2.0
+
+# Deep Learning (opcional - para LSTM)
+# tensorflow>=2.12.0  # Descomentar si quieres usar LSTM
+
+# Sentiment Analysis
+transformers>=4.30.0
+torch>=2.0.0
+sentencepiece>=0.1.99
+
+# Time Series Forecasting
+prophet>=1.1.0
+cmdstanpy>=1.1.0

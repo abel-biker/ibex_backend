@@ -18,6 +18,7 @@ from app.data_providers.ibex35_symbols import (
     get_company_info, SECTORS
 )
 from app.scoring.danelfin_score import calculate_danelfin_score
+from app.scoring.hybrid_scorer import get_hybrid_scorer, HybridScorer
 from app.ea.expert_advisors import (
     RSI_EA, MACD_EA, MA_Crossover_EA, Bollinger_EA, Ensemble_EA, 
     EAConfig, SignalType
@@ -34,8 +35,25 @@ from app.services.notifications import send_price_alert_email, test_email_config
 app = FastAPI(
     title="IBEX 35 Trading API",
     description="API tipo Danelfin con Expert Advisors para IBEX 35 - Optimizado para Android",
-    version="2.0.0"
+    version="2.3.0"
 )
+
+# ==================== SISTEMA HÍBRIDO AI ====================
+# Inicializar HybridScorer con ML models (lazy loading)
+hybrid_scorer = None  # Se inicializa bajo demanda
+
+def get_scorer(use_hybrid: bool = True) -> HybridScorer:
+    """
+    Retorna scorer híbrido o tradicional.
+    El scorer híbrido se inicializa solo cuando se necesita (lazy loading).
+    """
+    global hybrid_scorer
+    if use_hybrid and hybrid_scorer is None:
+        hybrid_scorer = get_hybrid_scorer(
+            ml_model_path=None,  # Usar modelo básico por ahora
+            enable_sentiment=False  # Deshabilitado por defecto (requiere noticias)
+        )
+    return hybrid_scorer
 
 # CORS para permitir acceso desde apps móviles
 app.add_middleware(
@@ -226,13 +244,26 @@ def root():
 def health_check():
     """Endpoint de salud para monitoreo"""
     cache_stats = get_cache_stats()
+    
+    # Verificar estado del sistema híbrido
+    try:
+        scorer = get_scorer(use_hybrid=True)
+        hybrid_status = {
+            "ml_trained": scorer.ml_predictor.is_trained,
+            "prophet_available": scorer.prophet.is_available,
+            "sentiment_enabled": scorer.enable_sentiment
+        }
+    except:
+        hybrid_status = {"error": "Hybrid system not initialized"}
+    
     return {
         "status": "healthy",
         "api": "IBEX 35 Trading API",
-        "version": "2.2.0",
+        "version": "2.3.0",
         "timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
         "total_symbols": len(IBEX_35_SYMBOLS),
-        "cache": cache_stats
+        "cache": cache_stats,
+        "ai_system": hybrid_status
     }
 
 @app.post("/api/v1/admin/cache/clear")
@@ -282,22 +313,28 @@ def get_stock_data_cached(symbol: str, interval: str = "1d", period: str = "5y")
 def get_ibex35_ranking(
     limit: int = Query(35, ge=1, le=35),
     sector: Optional[str] = Query(None),
-    min_score: Optional[float] = Query(None, ge=0, le=10)
+    min_score: Optional[float] = Query(None, ge=0, le=10),
+    use_ai: bool = Query(True, description="Usar sistema híbrido AI (XGBoost+Prophet)")
 ):
     """
-    📱 MÓVIL: Ranking completo del IBEX 35 con scores Danelfin.
+    📱 MÓVIL: Ranking completo del IBEX 35 con scores Danelfin o Híbrido AI.
     Retorna lista ordenada por score de mayor a menor.
     
     Parámetros:
     - limit: Número de empresas (default 35)
     - sector: Filtrar por sector (Financiero, Energía, etc.)
     - min_score: Score mínimo (0-10)
+    - use_ai: Si True, usa sistema híbrido (XGBoost+Prophet). Si False, solo Danelfin tradicional.
     
     ⚡ Este endpoint usa caché de 5 minutos para mejor performance.
+    🤖 NUEVO v2.3: Sistema híbrido con ML predictivo para mejores señales.
     """
     symbols = get_all_symbols()
     if sector:
         symbols = get_symbols_by_sector(sector)
+    
+    # Obtener scorer apropiado
+    scorer = get_scorer(use_hybrid=use_ai) if use_ai else None
     
     results = []
     for symbol in symbols:
@@ -307,13 +344,16 @@ def get_ibex35_ranking(
             if df is None:
                 continue
             
-            # Calcular score Danelfin
-            score_data = calculate_danelfin_score(df)
+            # Calcular score (híbrido o tradicional)
+            if use_ai and scorer:
+                score_data = scorer.calculate_hybrid_score(df)
+            else:
+                score_data = calculate_danelfin_score(df)
             
             company_info = get_company_info(symbol)
             latest = df.iloc[-1]
             
-            results.append({
+            result_item = {
                 "symbol": symbol,
                 "name": company_info["name"],
                 "sector": company_info["sector"],
@@ -322,10 +362,27 @@ def get_ibex35_ranking(
                 "confidence": score_data["confidence"],
                 "price": round(float(latest["close"]), 2),
                 "change_pct": round((float(latest["close"]) / float(df.iloc[-2]["close"]) - 1) * 100, 2) if len(df) > 1 else 0,
-                "technical_score": score_data["technical_score"],
-                "momentum_score": score_data["momentum_score"],
-                "sentiment_score": score_data["sentiment_score"],
-            })
+            }
+            
+            # Agregar información adicional según el tipo de score
+            if use_ai and 'components' in score_data:
+                result_item.update({
+                    "signal": score_data.get("signal", "HOLD"),
+                    "methodology": "Hybrid AI",
+                    "technical_score": score_data["components"]["technical"]["score"],
+                    "ml_score": score_data["components"]["ml_prediction"]["score"],
+                    "ml_signal": score_data["components"]["ml_prediction"]["signal"],
+                    "prophet_score": score_data["components"]["prophet"]["score"],
+                })
+            else:
+                result_item.update({
+                    "technical_score": score_data.get("technical_score", 0),
+                    "momentum_score": score_data.get("momentum_score", 0),
+                    "sentiment_score": score_data.get("sentiment_score", 0),
+                    "methodology": "Danelfin Classic"
+                })
+            
+            results.append(result_item)
         except Exception as e:
             print(f"Error processing {symbol}: {e}")
             continue
@@ -343,17 +400,24 @@ def get_ibex35_ranking(
         "min_score_filter": min_score,
         "timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
         "ranking": results[:limit],
+        "methodology": "Hybrid AI (XGBoost+Prophet+Danelfin)" if use_ai else "Danelfin Classic",
         "cache_info": "Data cached for 5 minutes"
     }
 
 
 @app.get("/api/v1/stock/{symbol}/score")
-def get_stock_score(symbol: str):
+def get_stock_score(
+    symbol: str,
+    use_ai: bool = Query(True, description="Usar sistema híbrido AI")
+):
     """
-    📱 MÓVIL: Score Danelfin detallado de una acción individual.
-    Incluye sub-scores, señales y recomendaciones.
+    📱 MÓVIL: Score detallado de una acción individual.
+    
+    Parámetros:
+    - use_ai: Si True, usa sistema híbrido AI (XGBoost+Prophet+Danelfin). Si False, solo Danelfin.
     
     ⚡ Usa caché de 5 minutos.
+    🤖 NUEVO v2.3: Sistema híbrido con predicción ML para señales más precisas.
     """
     # if symbol not in IBEX_35_SYMBOLS:  # Deshabilitado: permitir cualquier símbolo
         # raise HTTPException(status_code=404, detail=f"Symbol {symbol} not in IBEX 35")
@@ -367,35 +431,90 @@ def get_stock_score(symbol: str):
         if df is None:
             raise HTTPException(status_code=404, detail="No data available")
         
-        # Score Danelfin
-        score_data = calculate_danelfin_score(df)
+        # Obtener scorer apropiado
+        scorer = get_scorer(use_hybrid=use_ai) if use_ai else None
         
-        company_info = get_company_info(symbol)
-        latest = df.iloc[-1]
-        
-        return {
-            "symbol": symbol,
-            "name": company_info["name"],
-            "sector": company_info["sector"],
-            "timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "price": round(float(latest["close"]), 2),
-            "score": score_data["total_score"],
-            "rating": score_data["rating"],
-            "confidence": score_data["confidence"],
-            "sub_scores": {
-                "technical": score_data["technical_score"],
-                "momentum": score_data["momentum_score"],
-                "sentiment": score_data["sentiment_score"]
-            },
-            "signals": score_data["signals"],
-            "indicators": {
-                "rsi": round(float(latest["rsi"]), 2) if pd.notna(latest["rsi"]) else None,
-                "macd": round(float(latest["macd"]), 4) if pd.notna(latest["macd"]) else None,
-                "macd_signal": round(float(latest["macd_signal"]), 4) if pd.notna(latest["macd_signal"]) else None,
-                "sma_20": round(float(latest["sma_20"]), 2) if pd.notna(latest["sma_20"]) else None,
-                "sma_50": round(float(latest["sma_50"]), 2) if pd.notna(latest["sma_50"]) else None,
+        # Calcular score
+        if use_ai and scorer:
+            score_data = scorer.calculate_hybrid_score(df)
+            
+            # Formato de respuesta para sistema híbrido
+            company_info = get_company_info(symbol)
+            latest = df.iloc[-1]
+            
+            return {
+                "symbol": symbol,
+                "name": company_info["name"],
+                "sector": company_info["sector"],
+                "timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "price": round(float(latest["close"]), 2),
+                "score": score_data["total_score"],
+                "rating": score_data["rating"],
+                "signal": score_data.get("signal", "HOLD"),
+                "confidence": score_data["confidence"],
+                "reason": score_data.get("reason", ""),
+                "methodology": score_data.get("methodology", "Hybrid AI"),
+                "components": {
+                    "technical": {
+                        "score": score_data["components"]["technical"]["score"],
+                        "weight": score_data["components"]["technical"]["weight"]
+                    },
+                    "ml_prediction": {
+                        "score": score_data["components"]["ml_prediction"]["score"],
+                        "signal": score_data["components"]["ml_prediction"]["signal"],
+                        "probability": score_data["components"]["ml_prediction"]["probability"],
+                        "weight": score_data["components"]["ml_prediction"]["weight"]
+                    },
+                    "prophet": {
+                        "score": score_data["components"]["prophet"]["score"],
+                        "predicted_change_pct": score_data["components"]["prophet"]["predicted_change_pct"],
+                        "weight": score_data["components"]["prophet"]["weight"]
+                    },
+                    "sentiment": {
+                        "score": score_data["components"]["sentiment"]["score"],
+                        "sentiment": score_data["components"]["sentiment"]["sentiment"],
+                        "weight": score_data["components"]["sentiment"]["weight"]
+                    }
+                },
+                "indicators": {
+                    "rsi": round(float(latest["rsi"]), 2) if pd.notna(latest["rsi"]) else None,
+                    "macd": round(float(latest["macd"]), 4) if pd.notna(latest["macd"]) else None,
+                    "macd_signal": round(float(latest["macd_signal"]), 4) if pd.notna(latest["macd_signal"]) else None,
+                    "sma_20": round(float(latest["sma_20"]), 2) if pd.notna(latest["sma_20"]) else None,
+                    "sma_50": round(float(latest["sma_50"]), 2) if pd.notna(latest["sma_50"]) else None,
+                }
             }
-        }
+        else:
+            # Modo tradicional Danelfin
+            score_data = calculate_danelfin_score(df)
+            
+            company_info = get_company_info(symbol)
+            latest = df.iloc[-1]
+            
+            return {
+                "symbol": symbol,
+                "name": company_info["name"],
+                "sector": company_info["sector"],
+                "timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "price": round(float(latest["close"]), 2),
+                "score": score_data["total_score"],
+                "rating": score_data["rating"],
+                "confidence": score_data["confidence"],
+                "methodology": "Danelfin Classic",
+                "sub_scores": {
+                    "technical": score_data["technical_score"],
+                    "momentum": score_data["momentum_score"],
+                    "sentiment": score_data["sentiment_score"]
+                },
+                "signals": score_data["signals"],
+                "indicators": {
+                    "rsi": round(float(latest["rsi"]), 2) if pd.notna(latest["rsi"]) else None,
+                    "macd": round(float(latest["macd"]), 4) if pd.notna(latest["macd"]) else None,
+                    "macd_signal": round(float(latest["macd_signal"]), 4) if pd.notna(latest["macd_signal"]) else None,
+                    "sma_20": round(float(latest["sma_20"]), 2) if pd.notna(latest["sma_20"]) else None,
+                    "sma_50": round(float(latest["sma_50"]), 2) if pd.notna(latest["sma_50"]) else None,
+                }
+            }
     except HTTPException:
         raise
     except Exception as e:
@@ -1113,3 +1232,163 @@ def test_email_configuration():
     """
     result = test_email_config()
     return result
+
+
+# ==================== NUEVOS ENDPOINTS AI/ML ====================
+
+@app.get("/api/v1/admin/ml/feature-importance")
+def get_ml_feature_importance():
+    """
+    📊 Obtiene la importancia de cada feature en el modelo ML.
+    
+    Útil para entender qué indicadores son más importantes para las predicciones.
+    Solo funciona si el modelo está entrenado.
+    """
+    try:
+        scorer = get_scorer(use_hybrid=True)
+        if scorer and scorer.ml_predictor.is_trained:
+            importance = scorer.get_feature_importance()
+            return {
+                "model_status": "trained",
+                "feature_importance": importance,
+                "total_features": len(importance)
+            }
+        else:
+            return {
+                "model_status": "not_trained",
+                "message": "Modelo no entrenado. Usa modo básico o entrena primero.",
+                "feature_importance": {}
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/admin/ml/train-model")
+def train_ml_model(
+    symbol: str = Query("^IBEX", description="Símbolo para entrenar (default: índice IBEX)"),
+    days_ahead: int = Query(15, ge=1, le=30, description="Días futuros a predecir"),
+    test_size: float = Query(0.2, ge=0.1, le=0.4, description="Proporción de datos para test")
+):
+    """
+    🤖 Entrena el modelo ML con datos históricos (admin).
+    
+    Parámetros:
+    - symbol: Símbolo para entrenar (por defecto índice IBEX)
+    - days_ahead: Número de días futuros a predecir (default 15)
+    - test_size: Proporción de datos para test (default 0.2 = 20%)
+    
+    ⚠️ Advertencia: Este proceso puede tardar varios minutos.
+    """
+    try:
+        from sklearn.model_selection import train_test_split
+        import numpy as np
+        
+        # Obtener datos históricos (5 años)
+        df = get_stock_data_cached(symbol, period="5y")
+        if df is None or len(df) < 500:
+            raise HTTPException(
+                status_code=400,
+                detail="Datos insuficientes para entrenar (mínimo 500 días)"
+            )
+        
+        print(f"🔄 Iniciando entrenamiento con {len(df)} días de datos...")
+        
+        # Crear target: 1 si sube en N días, 0 si baja
+        df["future_return"] = df["close"].shift(-days_ahead) / df["close"] - 1
+        df["target"] = (df["future_return"] > 0).astype(int)
+        
+        # Eliminar filas con NaN
+        df_clean = df.dropna()
+        
+        if len(df_clean) < 100:
+            raise HTTPException(
+                status_code=400,
+                detail="Datos insuficientes después de limpiar NaN"
+            )
+        
+        # Preparar features
+        feature_cols = ['rsi', 'macd', 'macd_signal', 'sma_20', 'sma_50',
+                       'bb_upper', 'bb_middle', 'bb_lower', 'volume', 'close']
+        
+        X = df_clean[feature_cols].values
+        y = df_clean["target"].values
+        
+        # Split train/test
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, shuffle=False  # No shuffle para series temporales
+        )
+        
+        # Entrenar modelo
+        scorer = get_scorer(use_hybrid=True)
+        scorer.ml_predictor.train(X_train, y_train, X_test, y_test)
+        
+        # Guardar modelo
+        model_path = "data/models/ibex_xgboost.pkl"
+        scorer.ml_predictor.save_model(model_path)
+        
+        # Obtener métricas
+        importance = scorer.get_feature_importance()
+        
+        return {
+            "status": "success",
+            "message": "Modelo entrenado exitosamente",
+            "model_path": model_path,
+            "training_stats": {
+                "total_samples": len(df_clean),
+                "train_samples": len(X_train),
+                "test_samples": len(X_test),
+                "days_ahead": days_ahead,
+                "features_used": len(feature_cols)
+            },
+            "feature_importance": importance
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error en entrenamiento: {str(e)}")
+
+
+@app.get("/api/v1/admin/ml/model-status")
+def get_ml_model_status():
+    """
+    📊 Obtiene el estado del sistema híbrido AI.
+    
+    Muestra qué componentes están activos y sus configuraciones.
+    """
+    try:
+        scorer = get_scorer(use_hybrid=True)
+        
+        return {
+            "hybrid_system": {
+                "status": "active",
+                "components": {
+                    "danelfin": {
+                        "status": "active",
+                        "weight": "25%"
+                    },
+                    "ml_predictor": {
+                        "status": "trained" if scorer.ml_predictor.is_trained else "basic_mode",
+                        "weight": "40%",
+                        "model_type": "XGBoost"
+                    },
+                    "prophet": {
+                        "status": "available" if scorer.prophet.is_available else "unavailable",
+                        "weight": "20%"
+                    },
+                    "sentiment": {
+                        "status": "enabled" if scorer.enable_sentiment else "disabled",
+                        "weight": "15%"
+                    }
+                },
+                "methodology": "Hybrid AI: Danelfin + XGBoost + Prophet + FinBERT"
+            }
+        }
+    except Exception as e:
+        return {
+            "hybrid_system": {
+                "status": "error",
+                "error": str(e)
+            }
+        }
+

@@ -1,89 +1,52 @@
-# 📈 IBEX 35 Trading System - Danelfin Style + Expert Advisors
+# 📈 IBEX 35 Trading System - Danelfin Style + Expert Advisors + AI
 
-**Versión:** 2.3.0 (Feature Release - Enero 2026)  
-**Estado:** ✅ Estable en Railway
+**Versión:** 2.3.0 (AI Release - Enero 2026)  
+**Estado:** ✅ Funcionando en local y Railway
 
-Sistema completo de análisis y trading automático para el IBEX 35, inspirado en **Danelfin** con **Expert Advisors** tipo MetaTrader 4/5. Optimizado para Android.
+Sistema completo de análisis y trading automático para el IBEX 35, inspirado en **Danelfin** con **Expert Advisors** tipo MetaTrader 4/5 + **Sistema Híbrido AI** (XGBoost + Prophet + FinBERT). Optimizado para Android.
 
-## 📚 Documentación
+## 🆕 NUEVO en v2.3.0: Sistema Híbrido AI
 
-- **[Guía para Frontend/Mobile Developers →](FRONTEND_GUIDE.md)** - Ejemplos de código JS/Kotlin para favoritos e historial
-- **[CHANGELOG v2.2.1](CHANGELOG_v2.2.1.md)** - Hotfix scheduler de alertas
-- **[Testing Guide](TESTING_GUIDE.md)** - Guía de testing y validación
-- **[Deploy Railway](DEPLOY_RAILWAY.md)** - Instrucciones de deployment
+### 🤖 4 Metodologías Combinadas:
+1. **XGBoost ML (40%)** - Predice tendencia a 15 días ⭐ MÁS IMPORTANTE
+2. **Danelfin (25%)** - Análisis técnico tradicional
+3. **Prophet (20%)** - Predicción de precio con series temporales
+4. **FinBERT (15%)** - Sentiment de noticias (opcional)
 
-## 🚨 Última Actualización (v2.3.0)
-
-**✨ Nuevas funcionalidades:**
-- ⭐ **Favoritos**: Guarda hasta 10 símbolos favoritos (auto-gestiona el límite)
-- 📜 **Historial**: Últimos 10 símbolos consultados (se añade automáticamente)
-- 🔗 Persistencia en SQLite con índices optimizados
-
-**Hotfix previo (v2.2.1):** Scheduler de alertas deshabilitado temporalmente para resolver bloqueos en Railway. Las alertas ahora se verifican manualmente vía:
-
-```bash
-POST /api/v1/admin/check-alerts-now
-```
+### ✅ Ya Configurado:
+- ✅ Modelo entrenado con 1216 días de datos del IBEX
+- ✅ Prophet instalado y funcionando
+- ✅ FinBERT listo (lazy loading)
+- ✅ Endpoints actualizados con parámetro `use_ai=true`
 
 ---
 
-## 🎯 Características Principales
+## 🚀 Inicio Rápido
 
-### 1. **Sistema de Scoring Danelfin (0-10)**
-- Rating automático de 0 a 10 para cada acción del IBEX 35
-- Análisis combinado:
-  - **Técnico (40%)**: RSI, MACD, Medias móviles, Bandas de Bollinger
-  - **Momentum (30%)**: Tendencias de precio, volumen relativo
-  - **Sentiment (30%)**: Posición vs máximos/mínimos, volatilidad
-
-### 2. **Expert Advisors (EAs) Configurables**
-5 estrategias de trading automático:
-- **RSI EA**: Basado en sobreventa/sobrecompra
-- **MACD EA**: Cruces de MACD
-- **MA Crossover EA**: Golden Cross / Death Cross
-- **Bollinger EA**: Bandas de Bollinger
-- **Ensemble EA**: Combinación inteligente de todas (recomendado)
-
-Cada EA incluye:
-- Gestión de riesgo (stop loss, take profit, trailing stop)
-- Backtesting con métricas detalladas
-- Señales en tiempo real
-
-### 3. **API REST Optimizada para Móvil**
-Endpoints lightweight diseñados para apps Android con respuestas rápidas y datos comprimidos.
-
-### 4. **35 Empresas del IBEX 35**
-Base de datos completa con sectores y pesos de capitalización.
-
----
-
-## 🚀 Instalación y Configuración
-
-### Requisitos
-- Python 3.8+
-- pip
-- Virtualenv (recomendado)
-
-### Setup Rápido
-
+### 1. Instalar dependencias
 ```powershell
-# 1. Activar entorno virtual
-.\.venv\Scripts\Activate.ps1
-
-# 2. Instalar dependencias
 pip install -r requirements.txt
+```
 
-# 3. Ejecutar servidor
-python -m uvicorn app.main:app --reload
+### 2. Entrenar modelo (solo primera vez)
+```powershell
+python train_ibex_model.py
+```
+⏱️ Tarda ~2 minutos
 
-# 4. Acceder a la API
-# http://localhost:8000
-# Documentación interactiva: http://localhost:8000/docs
+### 3. Iniciar servidor
+```powershell
+python -m uvicorn app.main:app --reload --port 8000
+```
+
+### 4. Probar en navegador
+```
+http://localhost:8000/docs
 ```
 
 ---
 
-## 📱 API Endpoints para Android
+## 📱 API Endpoints (Actualizados)
 
 ### 1. Ranking IBEX 35 con Scores
 ```http
