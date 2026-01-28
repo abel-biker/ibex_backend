@@ -21,6 +21,6 @@ transformers>=4.30.0
 torch>=2.0.0
 sentencepiece>=0.1.99
 
-# Time Series Forecasting (opcional - descomentar si Railway tiene suficiente memoria)
-# prophet>=1.1.0
-# cmdstanpy>=1.1.0
+# Time Series Forecasting
+prophet>=1.1.0
+cmdstanpy>=1.1.0
